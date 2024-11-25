@@ -18,14 +18,11 @@ function Install-Ansible{
         sudo pacman -Sy ansible
     }
 
-    $dnfVersion = Get-Command dnf -ErrorAction SilentlyContinue
-    $aptVersion = Get-Command apt -ErrorAction SilentlyContinue
-    $pacmanVersion = Get-Command pacman -ErrorAction SilentlyContinue
-    if ($dnfVersion) {
+    if (Get-Command dnf -ErrorAction SilentlyContinue) {
         Install-Ansible-RHEL
-    } elseif ($aptVersion) {
+    } elseif (Get-Command apt -ErrorAction SilentlyContinue) {
         Install-Ansible-Ubuntu-Debian
-    } elseif ($pacmanVersion) {
+    } elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
         Install-Ansible-Arch
     } else {
         Write-Host "Unsupported Linux distribution. Please install Ansible manually." -ForegroundColor Red
@@ -33,8 +30,7 @@ function Install-Ansible{
     }
 
     # verify installation
-    $ansibleVersion = Get-Command ansible -ErrorAction SilentlyContinue
-    if (-Not ($ansibleVersion)) {
+    if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
         Write-Host "Ansible installation failed. Please install Ansible manually." -ForegroundColor Red
         exit 1
     } else {
@@ -43,24 +39,21 @@ function Install-Ansible{
 }
 
 # install ansible locally
-$ansibleVersion = Get-Command ansible -ErrorAction SilentlyContinue
-if (-Not ($ansibleVersion)) {
+if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
     Write-Host "Ansible is not installed. Installing Ansible..."
     Install-Ansible
 } else {
     Write-Host "Ansible is already installed." -ForegroundColor Green
 }
 
-Write-Host "Install PowerShell on the remote host..."
-ansible-playbook -i ./inventory.ini ./install-pwsh.yml --ask-become-pass
-
-Write-Host "Install Docker on the remote host..."
-ansible-playbook -i ./inventory.ini ./install-docker.yml --ask-become-pass
+# temp folder to store hosts information for pwsh remoting
+New-Item -Path "./temp" -ItemType Directory -Force
+# install pwsh, docker on the remote host and get hosts
+Write-Host "Install dependencies on the remote host..."
+ansible-playbook -i ./inventory.ini ./master.yml --ask-become-pass
 
 # get host information from ansible
-New-Item -Path "./temp" -ItemType Directory -Force
-ansible-playbook -i ./inventory.ini ./get-hosts.yml
-$servers = Get-Content -Path "./temp/host_info.json" | ConvertFrom-Json
+$servers = Get-Content -Path "./temp/host_info.csv"
 # cleanup
 Remove-Item -Path "./temp" -Recurse -Force
 
@@ -71,7 +64,7 @@ function Get-Data {
         stackName = 'auto_deployed'
     }
     
-    # set default values for .psd1
+    # set default values for .psd1 if not provided
     foreach ($key in $defaultValues.Keys) {
         if (-Not $data.ContainsKey($key)) {
             $data.Add($key, $defaultValues[$key])
@@ -82,13 +75,14 @@ function Get-Data {
 }
 
 # deploy the stack on each host
-# this could also easily be done with ansible
+# deploying could be done trough ansible, but we will use PowerShell to make further changes
 foreach ($server in $servers) {
-    $hostname = ($server.msg -split ',')[0]
-    $username = ($server.msg -split ',')[1]
+    $hostname = ($server -split ',')[0]
+    $username = ($server -split ',')[1]
     Write-Host "Deploying stack on $hostname..."
     $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
 
+    # get data from .psd1 file
     $data = Get-Data
 
     Invoke-Command -Session $session -ScriptBlock {

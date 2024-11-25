@@ -1,15 +1,12 @@
-- name: Get host information
-  hosts: all
-  gather_facts: false
-  tasks:
-      - name: Retrieve IP and username
-        ansible.builtin.debug:
-            msg: "{{ ansible_host }},{{ ansible_user }}"
-        register: host_info
+- name: Retrieve IP and username
+  ansible.builtin.set_fact:
+      host_info: "{{ ansible_host }},{{ ansible_user }}"
 
-      - name: Save host information
-        delegate_to: localhost
-        ansible.builtin.copy:
-            content: "{{ host_info }}"
-            dest: ./temp/host_info.json
-            mode: "0644"
+- name: Save host information
+  delegate_to: localhost
+  ansible.builtin.copy:
+      content: "{{ host_info }}"
+      dest: ./temp/host_info.csv
+      mode: "0644"
+  # don't sudo as we are on the local machine
+  become: false
