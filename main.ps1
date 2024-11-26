@@ -50,7 +50,7 @@ if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
 New-Item -Path "./temp" -ItemType Directory -Force
 # install pwsh, docker on the remote host and get hosts
 Write-Host "Install dependencies on the remote host..."
-ansible-playbook -i ./inventory.ini ./master.yml --ask-become-pass
+ansible-playbook -i ./inventory.ini ./ansible/master.yml --ask-become-pass
 
 # get host information from ansible
 $servers = Get-Content -Path "./temp/host_info.csv"

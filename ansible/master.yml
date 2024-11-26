@@ -1,0 +1,14 @@
+---
+- name: Master playbook
+  hosts: all
+  become: true
+
+  tasks:
+      - name: Get host information
+        ansible.builtin.include_tasks: playbooks/get-hosts.yml
+
+      - name: Install Powershell
+        ansible.builtin.include_tasks: playbooks/install-pwsh.yml
+
+      - name: Install Docker
+        ansible.builtin.include_tasks: playbooks/install-docker.yml

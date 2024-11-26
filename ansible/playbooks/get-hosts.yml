@@ -6,7 +6,7 @@
   delegate_to: localhost
   ansible.builtin.copy:
       content: "{{ host_info }}"
-      dest: ./temp/host_info.csv
+      dest: ../temp/host_info.csv
       mode: "0644"
   # don't sudo as we are on the local machine
   become: false
