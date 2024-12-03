@@ -24,6 +24,8 @@ function Install-Ansible{
         Install-Ansible-Ubuntu-Debian
     } elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
         Install-Ansible-Arch
+    } elseif ($IsWindows) {
+        Write-Host "Windows not supported. Please use WSL." -ForegroundColor Red
     } else {
         Write-Host "Unsupported Linux distribution. Please install Ansible manually." -ForegroundColor Red
         exit 1
