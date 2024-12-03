@@ -1,4 +1,4 @@
-function Install-Ansible{
+function Install-Ansible {
     # see https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html
     function Install-Ansible-Ubuntu-Debian {
         Write-Host "Installing Ansible on Debian-based system..."
@@ -20,13 +20,17 @@ function Install-Ansible{
 
     if (Get-Command dnf -ErrorAction SilentlyContinue) {
         Install-Ansible-RHEL
-    } elseif (Get-Command apt -ErrorAction SilentlyContinue) {
+    }
+    elseif (Get-Command apt -ErrorAction SilentlyContinue) {
         Install-Ansible-Ubuntu-Debian
-    } elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
+    }
+    elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
         Install-Ansible-Arch
-    } elseif ($IsWindows) {
+    }
+    elseif ($IsWindows) {
         Write-Host "Windows not supported. Please use WSL." -ForegroundColor Red
-    } else {
+    }
+    else {
         Write-Host "Unsupported Linux distribution. Please install Ansible manually." -ForegroundColor Red
         exit 1
     }
@@ -35,7 +39,8 @@ function Install-Ansible{
     if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
         Write-Host "Ansible installation failed. Please install Ansible manually." -ForegroundColor Red
         exit 1
-    } else {
+    }
+    else {
         Write-Host "Ansible installed successfully." -ForegroundColor Green
     }
 }
@@ -44,7 +49,8 @@ function Install-Ansible{
 if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
     Write-Host "Ansible is not installed. Installing Ansible..."
     Install-Ansible
-} else {
+}
+else {
     Write-Host "Ansible is already installed." -ForegroundColor Green
 }
 
@@ -55,42 +61,42 @@ Write-Host "Install dependencies on the remote host..."
 ansible-playbook -i ./inventory.ini ./ansible/master.yml --ask-become-pass
 
 # get host information from ansible
-$servers = Get-Content -Path "./temp/host_info.csv"
+[Array]$servers = Get-Content -Path "./temp/host_info.csv"
 # cleanup
 Remove-Item -Path "./temp" -Recurse -Force
 
 function Get-Data {
     [hashtable]$data = Import-PowerShellDataFile -Path "./main.psd1"
     [hashtable]$defaultValues = @{
-        restartPolicy = "unless-stopped"
-        stackName = "auto_deployed"
-        containerNetwork = "bridge"
+        restartPolicy      = [string]"unless-stopped"
+        stackName          = [string]"auto_deployed"
+        containerNetwork   = [string]"bridge"
 
-        piholeImage = "pihole/pihole:latest"
-        piholePort = "80"
-        piholePassword = "admin"
+        piholeImage        = [string]"pihole/pihole:latest"
+        piholePort         = [string]"80"
+        piholePassword     = [string]"admin"
 
-        unboundEnabled = $true
-        unboundImage = "mvance/unbound:latest"
-        unboundPort = "53"
-        unboundConfig = "/etc/unbound/unbound.conf"
+        unboundEnabled     = [bool]$true
+        unboundImage       = [string]"mvance/unbound:latest"
+        unboundPort        = [string]"53"
+        unboundConfig      = [string]"/etc/unbound/unbound.conf"
 
-        cloudflaredEnabled = $true
-        cloudflaredImage = "cloudflare/cloudflared:latest"
-        cloudflaredPort = "5053"
-        cloudflaredConfig = "/etc/cloudflared/config.yml"
+        cloudflaredEnabled = [bool]$true
+        cloudflaredImage   = [string]"cloudflare/cloudflared:latest"
+        cloudflaredPort    = [string]"5053"
+        cloudflaredConfig  = [string]"/etc/cloudflared/config.yml"
 
-        piholeVolumes = [array]@("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
-        unboundVolumes = [array]@("/etc/unbound:/etc/unbound")
+        piholeVolumes      = [array]@("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
+        unboundVolumes     = [array]@("/etc/unbound:/etc/unbound")
         cloudflaredVolumes = [array]@("/etc/cloudflared:/etc/cloudflared")
 
-        commonFlags = ""
-        piholeFlags = ""
-        unboundFlags = ""
-        cloudflaredFlags = ""
+        commonFlags        = [string]""
+        piholeFlags        = [string]""
+        unboundFlags       = [string]""
+        cloudflaredFlags   = [string]""
     }
 
-    
+
     # set default values for .psd1 if not provided
     foreach ($key in $defaultValues.Keys) {
         if (-Not $data.ContainsKey($key)) {
@@ -101,7 +107,6 @@ function Get-Data {
     return $data
 }
 
-
 function Deploy-Container {
     param(
         [string]$name,
@@ -111,80 +116,79 @@ function Deploy-Container {
         [string]$portMapping,
         [array]$volumes,
         [string]$flags
-        )
-        Write-Host "Deploying $name..."
-        $command = "docker run -d --name $name --restart $restartPolicy --network $network $portMapping $flags"
-        foreach ($volume in $volumes) {
-            $command += " -v $volume"
-        }
-        $command += " $image"
+    )
+    Write-Host "Deploying $name..."
+    [string]$command = "docker run -d --name $name --restart $restartPolicy --network $network $portMapping $flags"
+    foreach ($volume in $volumes) {
+        $command += " -v $volume"
+    }
+    $command += " $image"
         
-        Invoke-Expression $command
+    Invoke-Expression $command
 }
-    
+
 function Deploy-Pihole {
-    param($data)
+    param([hashtable]$data)
     Deploy-Container -name "$($data['stackName'])_pihole" `
-    -image "pihole/pihole" `
-    -network $data['containerNetwork'] `
-    -restartPolicy $data['restartPolicy'] `
-    -portMapping "-p $($data['piholePort']):80" `
-    -volumes $data['piholeVolumes'] `
-    -flags $data['piholeFlags']
+        -image "pihole/pihole" `
+        -network $data['containerNetwork'] `
+        -restartPolicy $data['restartPolicy'] `
+        -portMapping "-p $($data['piholePort']):80" `
+        -volumes $data['piholeVolumes'] `
+        -flags $data['piholeFlags']
 }
 
 function Deploy-Unbound {
-    param($data)
-    $image = if ((uname -m) -eq "x86_64") { "mvance/unbound" } else { "mvance/unbound-rpi" }
+    param([hashtable]$data)
+    [string]$image = if ((uname -m) -eq "x86_64") { "mvance/unbound" } else { "mvance/unbound-rpi" }
     Deploy-Container -name "$($data['stackName'])_unbound" `
-    -image $image `
-    -network $data['containerNetwork'] `
-    -restartPolicy $data['restartPolicy'] `
-    -portMapping "-p $($data['unboundPort']):53" `
-    -volumes $data['unboundVolumes'] `
-    -flags $data['unboundFlags']
+        -image $image `
+        -network $data['containerNetwork'] `
+        -restartPolicy $data['restartPolicy'] `
+        -portMapping "-p $($data['unboundPort']):53" `
+        -volumes $data['unboundVolumes'] `
+        -flags $data['unboundFlags']
 }
 
 function Deploy-Cloudflared {
-    param($data)
+    param([hashtable]$data)
     Deploy-Container -name "$($data['stackName'])_cloudflared" `
-    -image "cloudflare/cloudflared" `
-    -network $data['containerNetwork'] `
-    -restartPolicy $data['restartPolicy'] `
-    -portMapping "-p $($data['cloudflaredPort']):5053" `
-    -volumes $data['cloudflaredVolumes'] `
-    -flags $data['cloudflaredFlags']
+        -image "cloudflare/cloudflared" `
+        -network $data['containerNetwork'] `
+        -restartPolicy $data['restartPolicy'] `
+        -portMapping "-p $($data['cloudflaredPort']):5053" `
+        -volumes $data['cloudflaredVolumes'] `
+        -flags $data['cloudflaredFlags']
 }
 
 # store the functions in variables to send them to the remote host
 # based on https://stackoverflow.com/questions/11367367/how-do-i-include-a-locally-defined-function-when-using-powershells-invoke-comma#:~:text=%24fooDef%20%3D%20%22function%20foo%20%7B%20%24%7Bfunction%3Afoo%7D%20%7D%22%0A%0AInvoke%2DCommand%20%2DArgumentList%20%24fooDef%20%2DComputerName%20someserver.example.com%20%2DScriptBlock%20%7B%0A%20%20%20%20Param(%20%24fooDef%20)%0A%0A%20%20%20%20.%20(%5BScriptBlock%5D%3A%3ACreate(%24fooDef))%0A%0A%20%20%20%20Write%2DHost%20%22You%20can%20call%20the%20function%20as%20often%20as%20you%20like%3A%22%0A%20%20%20%20foo%20%22Bye%22%0A%20%20%20%20foo%20%22Adieu!%22%0A%7D
-$deployContainer = "function Deploy-Container {`n" + 
+[string]$deployContainer = "function Deploy-Container {`n" + 
                    (Get-Command Deploy-Container).ScriptBlock.ToString() + 
-                   "`n}"
-$deployPihole = "function Deploy-Pihole {`n" + 
+"`n}"
+[string]$deployPihole = "function Deploy-Pihole {`n" + 
                 (Get-Command Deploy-Pihole).ScriptBlock.ToString() + 
-                "`n}"
-$deployUnbound = "function Deploy-Unbound {`n" + 
+"`n}"
+[string]$deployUnbound = "function Deploy-Unbound {`n" + 
                  (Get-Command Deploy-Unbound).ScriptBlock.ToString() + 
-                 "`n}"
-$deployCloudflared = "function Deploy-Cloudflared {`n" + 
+"`n}"
+[string]$deployCloudflared = "function Deploy-Cloudflared {`n" + 
                      (Get-Command Deploy-Cloudflared).ScriptBlock.ToString() + 
-                     "`n}"
+"`n}"
 
 # deploy the stack on each host
 # deploying itself could be done trough ansible, but we will use PowerShell to make further changes
 foreach ($server in $servers) {
     # make an ssh connection to the remote host
-    $hostname = ($server -split ',')[0]
-    $username = ($server -split ',')[1]
+    [string]$hostname, $username = $server -split ','
     $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
     
     # get the data from the .psd1 file
-    $data = Get-Data
+    [hashtable]$data = Get-Data
     
     # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
-        param($data, $deployContainer, $deployPihole, $deployUnbound, $deployCloudflared)
+        param([hashtable]$data, [string]$deployContainer, [string]$deployPihole, [string]$deployUnbound, [string]$deployCloudflared)
         # recreate the functions on the remote host
         . ([ScriptBlock]::Create($deployContainer))
         . ([ScriptBlock]::Create($deployPihole))
@@ -197,14 +201,16 @@ foreach ($server in $servers) {
         # unbound
         if ($data['unboundEnabled']) {
             Deploy-Unbound -data $data
-        } else {
+        }
+        else {
             Write-Host "Unbound is disabled."
         }
         
         # cloudflared
         if ($data['cloudflaredEnabled']) {
             Deploy-Cloudflared -data $data
-        } else {
+        }
+        else {
             Write-Host "Cloudflared is disabled."
         }
     } -ArgumentList $data, $deployContainer, $deployPihole, $deployUnbound, $deployCloudflared
