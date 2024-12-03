@@ -60,9 +60,34 @@ Remove-Item -Path "./temp" -Recurse -Force
 function Get-Data {
     [hashtable]$data = Import-PowerShellDataFile -Path "./main.psd1"
     [hashtable]$defaultValues = @{
-        restartPolicy = 'unless-stopped'
-        stackName = 'auto_deployed'
+        restartPolicy = "unless-stopped"
+        stackName = "auto_deployed"
+        containerNetwork = "bridge"
+
+        piholeImage = "pihole/pihole:latest"
+        piholePort = "80"
+        piholePassword = "admin"
+
+        unboundEnabled = $true
+        unboundImage = "mvance/unbound:latest"
+        unboundPort = "53"
+        unboundConfig = "/etc/unbound/unbound.conf"
+
+        cloudflaredEnabled = $true
+        cloudflaredImage = "cloudflare/cloudflared:latest"
+        cloudflaredPort = "5053"
+        cloudflaredConfig = "/etc/cloudflared/config.yml"
+
+        piholeVolumes = [array]@("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
+        unboundVolumes = [array]@("/etc/unbound:/etc/unbound")
+        cloudflaredVolumes = [array]@("/etc/cloudflared:/etc/cloudflared")
+
+        commonFlags = ""
+        piholeFlags = ""
+        unboundFlags = ""
+        cloudflaredFlags = ""
     }
+
     
     # set default values for .psd1 if not provided
     foreach ($key in $defaultValues.Keys) {
@@ -74,37 +99,114 @@ function Get-Data {
     return $data
 }
 
+
+function Deploy-Container {
+    param(
+        [string]$name,
+        [string]$image,
+        [string]$network,
+        [string]$restartPolicy,
+        [string]$portMapping,
+        [array]$volumes,
+        [string]$flags
+        )
+        Write-Host "Deploying $name..."
+        $command = "docker run -d --name $name --restart $restartPolicy --network $network $portMapping $flags"
+        foreach ($volume in $volumes) {
+            $command += " -v $volume"
+        }
+        $command += " $image"
+        
+        Invoke-Expression $command
+}
+    
+function Deploy-Pihole {
+    param($data)
+    Deploy-Container -name "$($data['stackName'])_pihole" `
+    -image "pihole/pihole" `
+    -network $data['containerNetwork'] `
+    -restartPolicy $data['restartPolicy'] `
+    -portMapping "-p $($data['piholePort']):80" `
+    -volumes $data['piholeVolumes'] `
+    -flags $data['piholeFlags']
+}
+
+function Deploy-Unbound {
+    param($data)
+    $image = if ((uname -m) -eq "x86_64") { "mvance/unbound" } else { "mvance/unbound-rpi" }
+    Deploy-Container -name "$($data['stackName'])_unbound" `
+    -image $image `
+    -network $data['containerNetwork'] `
+    -restartPolicy $data['restartPolicy'] `
+    -portMapping "-p $($data['unboundPort']):53" `
+    -volumes $data['unboundVolumes'] `
+    -flags $data['unboundFlags']
+}
+
+function Deploy-Cloudflared {
+    param($data)
+    Deploy-Container -name "$($data['stackName'])_cloudflared" `
+    -image "cloudflare/cloudflared" `
+    -network $data['containerNetwork'] `
+    -restartPolicy $data['restartPolicy'] `
+    -portMapping "-p $($data['cloudflaredPort']):5053" `
+    -volumes $data['cloudflaredVolumes'] `
+    -flags $data['cloudflaredFlags']
+}
+
+# store the functions in variables to send them to the remote host
+# based on https://stackoverflow.com/questions/11367367/how-do-i-include-a-locally-defined-function-when-using-powershells-invoke-comma#:~:text=%24fooDef%20%3D%20%22function%20foo%20%7B%20%24%7Bfunction%3Afoo%7D%20%7D%22%0A%0AInvoke%2DCommand%20%2DArgumentList%20%24fooDef%20%2DComputerName%20someserver.example.com%20%2DScriptBlock%20%7B%0A%20%20%20%20Param(%20%24fooDef%20)%0A%0A%20%20%20%20.%20(%5BScriptBlock%5D%3A%3ACreate(%24fooDef))%0A%0A%20%20%20%20Write%2DHost%20%22You%20can%20call%20the%20function%20as%20often%20as%20you%20like%3A%22%0A%20%20%20%20foo%20%22Bye%22%0A%20%20%20%20foo%20%22Adieu!%22%0A%7D
+$deployContainer = "function Deploy-Container {`n" + 
+                   (Get-Command Deploy-Container).ScriptBlock.ToString() + 
+                   "`n}"
+$deployPihole = "function Deploy-Pihole {`n" + 
+                (Get-Command Deploy-Pihole).ScriptBlock.ToString() + 
+                "`n}"
+$deployUnbound = "function Deploy-Unbound {`n" + 
+                 (Get-Command Deploy-Unbound).ScriptBlock.ToString() + 
+                 "`n}"
+$deployCloudflared = "function Deploy-Cloudflared {`n" + 
+                     (Get-Command Deploy-Cloudflared).ScriptBlock.ToString() + 
+                     "`n}"
+
 # deploy the stack on each host
-# deploying could be done trough ansible, but we will use PowerShell to make further changes
+# deploying itself could be done trough ansible, but we will use PowerShell to make further changes
 foreach ($server in $servers) {
+    # make an ssh connection to the remote host
     $hostname = ($server -split ',')[0]
     $username = ($server -split ',')[1]
-    Write-Host "Deploying stack on $hostname..."
     $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
-
-    # get data from .psd1 file
+    
+    # get the data from the .psd1 file
     $data = Get-Data
-
+    
+    # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
-        param($data)
+        param($data, $deployContainer, $deployPihole, $deployUnbound, $deployCloudflared)
+        # recreate the functions on the remote host
+        . ([ScriptBlock]::Create($deployContainer))
+        . ([ScriptBlock]::Create($deployPihole))
+        . ([ScriptBlock]::Create($deployUnbound))
+        . ([ScriptBlock]::Create($deployCloudflared))
+
         # pihole
-        Write-Host "Deploying pihole..."
-        docker run -d --name "$($data['stackName'])_pihole" --restart $data['restartPolicy'] pihole/pihole
+        Deploy-Pihole -data $data
         
         # unbound
-        Write-Host "Deploying unbound..."
-        # use a different image for arm devices (like Raspberry Pi)
-        if ((uname -m) -eq "x86_64") {
-            $unbound_image = "mvance/unbound"
+        if ($data['unboundEnabled']) {
+            Deploy-Unbound -data $data
         } else {
-            $unbound_image = "mvance/unbound-rpi"
+            Write-Host "Unbound is disabled."
         }
-        docker run -d --name "$($data['stackName'])_unbound" --restart $data['restartPolicy'] $unbound_image
         
         # cloudflared
-        Write-Host "Deploying cloudflared..."
-        docker run -d --name "$($data['stackName'])_cloudflared" --restart $data['restartPolicy'] cloudflare/cloudflared
-    } -ArgumentList $data
-
+        if ($data['cloudflaredEnabled']) {
+            Deploy-Cloudflared -data $data
+        } else {
+            Write-Host "Cloudflared is disabled."
+        }
+    } -ArgumentList $data, $deployContainer, $deployPihole, $deployUnbound, $deployCloudflared
+    
+    # cleanup
     Remove-PSSession -Session $session
 }
