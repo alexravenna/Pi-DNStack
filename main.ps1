@@ -1,3 +1,11 @@
+param(
+    [string]$ConfigPath = "./main.psd1",
+    [string]$InventoryPath = "./inventory.ini",
+    [string]$TempPath = "./temp",
+    # become method for ansible
+    [string]$become = "ask-become-pass"
+)
+
 function Install-Ansible {
     # see https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html
     function Install-Ansible-Ubuntu-Debian {
@@ -55,18 +63,31 @@ else {
 }
 
 # temp folder to store hosts information for pwsh remoting
-New-Item -Path "./temp" -ItemType Directory -Force
+New-Item -Path $TempPath -ItemType Directory -Force
 # install pwsh, docker on the remote host and get hosts
 Write-Host "Install dependencies on the remote host..."
-ansible-playbook -i ./inventory.ini ./ansible/master.yml --ask-become-pass
+# to work with $become, we need to use Invoke-Expression to pass the variable to the command
+$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
+Invoke-Expression $command
 
 # get host information from ansible
-[Array]$servers = Get-Content -Path "./temp/host_info.csv"
+[Array]$servers = Get-Content -Path "$TempPath/host_info.csv"
 # cleanup
-Remove-Item -Path "./temp" -Recurse -Force
+Remove-Item -Path $TempPath -Recurse -Force
 
 function Get-Data {
-    [hashtable]$data = Import-PowerShellDataFile -Path "./main.psd1"
+    param(
+        [string]$ConfigPath
+    )
+
+    if (-not (Test-Path -Path $ConfigPath)) {
+        Write-Host "The specified configuration file '$ConfigPath' does not exist." -ForegroundColor Red
+        exit 1
+    }
+
+    # import data from the psd1 file
+    [hashtable]$data = Import-PowerShellDataFile -Path $ConfigPath
+
     [hashtable]$defaultValues = @{
         restartPolicy      = [string]"unless-stopped"
         stackName          = [string]"auto_deployed"
@@ -79,16 +100,12 @@ function Get-Data {
         unboundEnabled     = [bool]$true
         unboundImage       = [string]"mvance/unbound:latest"
         unboundPort        = [string]"53"
-        unboundConfig      = [string]"/etc/unbound/unbound.conf"
 
         cloudflaredEnabled = [bool]$true
         cloudflaredImage   = [string]"cloudflare/cloudflared:latest"
         cloudflaredPort    = [string]"5053"
-        cloudflaredConfig  = [string]"/etc/cloudflared/config.yml"
 
         piholeVolumes      = [array]@("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
-        unboundVolumes     = [array]@("/etc/unbound:/etc/unbound")
-        cloudflaredVolumes = [array]@("/etc/cloudflared:/etc/cloudflared")
 
         commonFlags        = [string]""
         piholeFlags        = [string]""
@@ -97,7 +114,7 @@ function Get-Data {
     }
 
 
-    # set default values for .psd1 if not provided
+    # set default values if not provided in the .psd1 file
     foreach ($key in $defaultValues.Keys) {
         if (-Not $data.ContainsKey($key)) {
             $data.Add($key, $defaultValues[$key])
@@ -123,7 +140,7 @@ function Deploy-Container {
         $command += " -v $volume"
     }
     $command += " $image"
-        
+
     Invoke-Expression $command
 }
 
@@ -135,7 +152,7 @@ function Deploy-Pihole {
         -restartPolicy $data['restartPolicy'] `
         -portMapping "-p $($data['piholePort']):80" `
         -volumes $data['piholeVolumes'] `
-        -flags $data['piholeFlags']
+        -flags "$($data['piholeFlags']) -e WEBPASSWORD=$($data['piholePassword'])"
 }
 
 function Deploy-Unbound {
@@ -184,7 +201,7 @@ foreach ($server in $servers) {
     $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
     
     # get the data from the .psd1 file
-    [hashtable]$data = Get-Data
+    [hashtable]$data = Get-Data -ConfigPath $ConfigPath --$become
     
     # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
