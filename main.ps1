@@ -23,32 +23,41 @@ param(
 
 function Install-Ansible {
     # see https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html
-    function Install-Ansible-Ubuntu-Debian {
-        Write-Host "Installing Ansible on Debian-based system..."
-        sudo apt update
-        sudo apt install -y software-properties-common
-        sudo add-apt-repository --yes --update ppa:ansible/ansible
-        sudo apt install -y ansible
-    }
-
-    function Install-Ansible-RHEL {
-        Write-Host "Installing Ansible on RHEL-based system..."
-        sudo dnf install -y ansible
-    }
-
-    function Install-Ansible-Arch {
-        Write-Host "Installing Ansible on Arch-based system..."
-        sudo pacman -Sy ansible
-    }
-
     if (Get-Command dnf -ErrorAction SilentlyContinue) {
-        Install-Ansible-RHEL
+        # rhel using dnf
+        Write-Host "Installing Ansible on RHEL-based system..."
+        try {
+            sudo dnf install -y ansible
+        }
+        catch {
+            Write-Host "Error installing Ansible with dnf." -ForegroundColor Red
+            exit 1
+        }
     }
     elseif (Get-Command apt -ErrorAction SilentlyContinue) {
-        Install-Ansible-Ubuntu-Debian
+        # debian/ubuntu using apt
+        Write-Host "Installing Ansible on Debian-based system..."
+        try {
+            sudo apt update
+            sudo apt install -y software-properties-common
+            sudo add-apt-repository --yes --update ppa:ansible/ansible
+            sudo apt install -y ansible
+        }
+        catch {
+            Write-Host "Error installing Ansible with apt." -ForegroundColor Red
+            exit 1
+        }
     }
     elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
-        Install-Ansible-Arch
+        # arch using pacman
+        Write-Host "Installing Ansible on Arch-based system..."
+        try {
+            sudo pacman -Sy ansible
+        }
+        catch {
+            Write-Host "Error installing Ansible with pacman." -ForegroundColor Red
+            exit 1
+        }
     }
     elseif ($IsWindows) {
         Write-Host "Windows not supported. Please use WSL." -ForegroundColor Red
@@ -59,14 +68,21 @@ function Install-Ansible {
     }
 
     # verify installation
-    if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
-        Write-Host "Ansible installation failed. Please install Ansible manually." -ForegroundColor Red
+    try {
+        if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
+            Write-Host "Ansible installation failed. Please install Ansible manually." -ForegroundColor Red
+            exit 1
+        }
+        else {
+            Write-Host "Ansible installed successfully." -ForegroundColor Green
+        }
+    }
+    catch {
+        Write-Host "Error verifying Ansible installation: $_" -ForegroundColor Red
         exit 1
     }
-    else {
-        Write-Host "Ansible installed successfully." -ForegroundColor Green
-    }
 }
+
 
 # install ansible locally
 if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
