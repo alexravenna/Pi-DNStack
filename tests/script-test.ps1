@@ -132,6 +132,24 @@ $testCases = @(
                 docker inspect auto_deployed_pihole --format '{{.HostConfig.NetworkMode}}' | grep "host"
             }
         )
+    },
+    @{
+        Name         = "Empty Ports"
+        ConfigPath   = "$configDir/empty_ports.psd1"
+        TestCommands = @(
+            {
+                # check that the pihole container has no ports bound
+                docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}' | grep -q '^$' && Write-Output "pihole container has no ports bound" || Write-Output "Error"
+            },
+            {
+                # check that the unbound container has no ports bound
+                docker inspect auto_deployed_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}' | grep -q '^$' && Write-Output "unbound container has no ports bound" || Write-Output "Error"
+            },
+            {
+                # check that the cloudflared container has no ports bound
+                docker inspect auto_deployed_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}' | grep -q '^$' && Write-Output "cloudflared container has no ports bound" || Write-Output "Error"
+            }
+        )
     }
 )
                                     

@@ -95,7 +95,7 @@ else {
 
 # temp folder to store hosts information for pwsh remoting
 New-Item -Path $TempPath -ItemType Directory -Force
-# install pwsh, docker on the remote host and get hosts
+# install pwsh, docker on the remote host and get hosts information
 Write-Host "Install dependencies on the remote host..."
 # to work with $become, we need to use Invoke-Expression to pass the variable to the command
 $command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
@@ -156,17 +156,29 @@ function Deploy-Container {
         [string]$image,
         [string]$network,
         [string]$restartPolicy,
-        [string]$portMapping,
+        [string]$internalPort,
+        [string]$externalPort,
         [array]$volumes,
         [string]$flags
     )
     Write-Host "Deploying $name..."
-    [string]$command = "docker run -d --name $name --restart $restartPolicy --network $network $portMapping $flags"
+    [string]$command = "docker run -d --name $name --restart $restartPolicy --network $network"
+    
+    # port mapping
+    $portMapping = if (![string]::IsNullOrEmpty($externalPort)) {
+        "-p $externalPort`:$internalPort"
+    }
+    else {
+        ""
+    }
+    $command += " $portMapping"
+    
     foreach ($volume in $volumes) {
         $command += " -v $volume"
     }
-    $command += " $image"
-
+    
+    $command += " $flags $image"
+    
     Invoke-Expression $command
 }
 
@@ -182,33 +194,40 @@ function Deploy-Pihole {
         -image "pihole/pihole" `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
-        -portMapping "-p $($data['piholePort']):80" `
+        -internalPort "80" `
+        -externalPort $data['piholePort'] `
         -volumes $data['piholeVolumes'] `
         -flags "$($data['piholeFlags']) -e WEBPASSWORD=$password"
 }
 
 function Deploy-Unbound {
     param([hashtable]$data)
+    # choose the image based on arm or x86
     [string]$image = if ((uname -m) -eq "x86_64") { "mvance/unbound" } else { "mvance/unbound-rpi" }
+
     Deploy-Container -name "$($data['stackName'])_unbound" `
         -image $image `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
-        -portMapping "-p $($data['unboundPort']):53" `
+        -internalPort "53" `
+        -externalPort $data['unboundPort'] `
         -volumes $data['unboundVolumes'] `
         -flags $data['unboundFlags']
 }
 
 function Deploy-Cloudflared {
     param([hashtable]$data)
+
     Deploy-Container -name "$($data['stackName'])_cloudflared" `
         -image "cloudflare/cloudflared" `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
-        -portMapping "-p $($data['cloudflaredPort']):5053" `
+        -internalPort "5053" `
+        -externalPort $data['cloudflaredPort'] `
         -volumes $data['cloudflaredVolumes'] `
         -flags $data['cloudflaredFlags']
 }
+
 
 # store the functions in variables to send them to the remote host
 # based on https://stackoverflow.com/questions/11367367/how-do-i-include-a-locally-defined-function-when-using-powershells-invoke-comma#:~:text=%24fooDef%20%3D%20%22function%20foo%20%7B%20%24%7Bfunction%3Afoo%7D%20%7D%22%0A%0AInvoke%2DCommand%20%2DArgumentList%20%24fooDef%20%2DComputerName%20someserver.example.com%20%2DScriptBlock%20%7B%0A%20%20%20%20Param(%20%24fooDef%20)%0A%0A%20%20%20%20.%20(%5BScriptBlock%5D%3A%3ACreate(%24fooDef))%0A%0A%20%20%20%20Write%2DHost%20%22You%20can%20call%20the%20function%20as%20often%20as%20you%20like%3A%22%0A%20%20%20%20foo%20%22Bye%22%0A%20%20%20%20foo%20%22Adieu!%22%0A%7D
