@@ -1,8 +1,23 @@
 param(
+    [ValidateScript({
+            $fileInfo = New-Object System.IO.FileInfo($_)
+            $fileInfo.Exists -and $fileInfo.Directory.Exists
+        })]
     [string]$ConfigPath = "./main.psd1",
+
+    [ValidateScript({
+            $fileInfo = New-Object System.IO.FileInfo($_)
+            $fileInfo.Exists -and $fileInfo.Directory.Exists
+        })]
     [string]$InventoryPath = "./inventory.ini",
+
+    [ValidateScript({
+            $fileInfo = New-Object System.IO.FileInfo($_)
+            $fileInfo.Exists -and $fileInfo.Directory.Exists
+        })]
     [string]$TempPath = "./temp",
-    # become method for ansible
+
+    # become method for ansible: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_privilege_escalation.html
     [string]$become = "ask-become-pass"
 )
 
@@ -79,11 +94,6 @@ function Get-Data {
     param(
         [string]$ConfigPath
     )
-
-    if (-not (Test-Path -Path $ConfigPath)) {
-        Write-Host "The specified configuration file '$ConfigPath' does not exist." -ForegroundColor Red
-        exit 1
-    }
 
     # import data from the psd1 file
     [hashtable]$data = Import-PowerShellDataFile -Path $ConfigPath
