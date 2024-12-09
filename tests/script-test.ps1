@@ -1,7 +1,7 @@
 # this test script is ment to be launched from the root directory trough CI/CD
 
 param(
-    # ? not a secure string right now as it is parsed in become, might make both a secure string later
+    # TODO not a secure string right now as it is parsed in become, might make both a secure string later
     $password,
     [string]$configDir = "./tests/configs",
     [string]$scriptPath = "./main.ps1",

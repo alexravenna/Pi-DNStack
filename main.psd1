@@ -1,3 +1,5 @@
+# to edit the configuration, remove uncomment the lines you want to change and edit the values as needed
+
 @{
     # restartPolicy      = "unless-stopped"
     # stackName          = "auto_deployed"

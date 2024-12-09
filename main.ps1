@@ -146,13 +146,19 @@ function Deploy-Container {
 
 function Deploy-Pihole {
     param([hashtable]$data)
+
+    $password = $data['piholePassword']
+    if ($password -eq "admin") {
+        Write-Host "Warning: The default password is used." -ForegroundColor Red
+    }
+
     Deploy-Container -name "$($data['stackName'])_pihole" `
         -image "pihole/pihole" `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
         -portMapping "-p $($data['piholePort']):80" `
         -volumes $data['piholeVolumes'] `
-        -flags "$($data['piholeFlags']) -e WEBPASSWORD=$($data['piholePassword'])"
+        -flags "$($data['piholeFlags']) -e WEBPASSWORD=$password"
 }
 
 function Deploy-Unbound {
@@ -205,7 +211,11 @@ foreach ($server in $servers) {
     
     # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
-        param([hashtable]$data, [string]$deployContainer, [string]$deployPihole, [string]$deployUnbound, [string]$deployCloudflared)
+        param([hashtable]$data,
+            [string]$deployContainer, 
+            [string]$deployPihole, 
+            [string]$deployUnbound, 
+            [string]$deployCloudflared)
         # recreate the functions on the remote host
         . ([ScriptBlock]::Create($deployContainer))
         . ([ScriptBlock]::Create($deployPihole))
