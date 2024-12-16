@@ -6,7 +6,9 @@
     # containerNetwork   = "bridge"
 
     # piholeImage        = "pihole/pihole:latest"
-    # piholePort         = "80"
+    # piholeUiPort       = "80"
+    # piholeDnsPort      = "53"
+    
     # # ! change the password !
     # piholePassword     = "admin"
     # # empty by default, just an example

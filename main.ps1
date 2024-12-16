@@ -119,15 +119,16 @@ function Get-Data {
         containerNetwork   = [string]"bridge"
 
         piholeImage        = [string]"pihole/pihole:latest"
-        piholePort         = [string]"80"
+        piholeUiPort       = [string]"80"
+        piholeDnsPort      = [string]"53"
         piholePassword     = [string]"admin"
         extraDNS           = [array]@()
 
         unboundEnabled     = [bool]$true
         unboundImage       = [string]"mvance/unbound:latest"
         unboundPort        = [string]""
-
         cloudflaredEnabled = [bool]$true
+
         cloudflaredImage   = [string]"cloudflare/cloudflared:latest"
         cloudflaredPort    = [string]""
 
@@ -155,30 +156,25 @@ function Deploy-Container {
         [string]$image,
         [string]$network,
         [string]$restartPolicy,
-        [string]$internalPort,
-        [string]$externalPort,
+        [array]$ports,
         [array]$volumes,
         [string]$flags,
         [string]$extra = ""
     )
     Write-Host "Deploying $name..."
     [string]$command = "docker run -d --name $name --restart $restartPolicy --network $network"
-    
+
     # port mapping
-    $portMapping = if (![string]::IsNullOrEmpty($externalPort)) {
-        "-p $externalPort`:$internalPort"
+    foreach ($port in $ports) {
+        $command += " -p $port"
     }
-    else {
-        ""
-    }
-    $command += " $portMapping"
-    
+
     foreach ($volume in $volumes) {
         $command += " -v $volume"
     }
-    
+
     $command += " $flags $image $extra"
-    
+
     Invoke-Expression $command
 }
 
@@ -194,8 +190,10 @@ function Deploy-Pihole {
         -image "pihole/pihole" `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
-        -internalPort "80" `
-        -externalPort $data['piholePort'] `
+        -ports @(
+        "$($data['piholeUiPort']):80",
+        "$($data['piholeDnsPort']):53"
+    ) `
         -volumes $data['piholeVolumes'] `
         -flags "$($data['piholeFlags']) -e WEBPASSWORD=$password"
 }
@@ -209,8 +207,7 @@ function Deploy-Unbound {
         -image $image `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
-        -internalPort "53" `
-        -externalPort $data['unboundPort'] `
+        -ports @("$($data['unboundPort']):53") `
         -volumes $data['unboundVolumes'] `
         -flags $data['unboundFlags']
 }
@@ -222,8 +219,7 @@ function Deploy-Cloudflared {
         -image "cloudflare/cloudflared" `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
-        -internalPort "5053" `
-        -externalPort $data['cloudflaredPort'] `
+        -ports @("$($data['cloudflaredPort']):5053") `
         -volumes $data['cloudflaredVolumes'] `
         -flags $data['cloudflaredFlags'] `
         -extra "proxy-dns --port 5053 --address 0.0.0.0"
