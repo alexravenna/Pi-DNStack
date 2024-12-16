@@ -1,5 +1,6 @@
 @{
-    piholePort      = "8081"
+    piholeUiPort    = "8081"
+    piholeDnsPort   = "5356"
     piholePassword  = "secret"
 
     cloudflaredPort = "5054"

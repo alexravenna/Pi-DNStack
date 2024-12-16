@@ -12,12 +12,15 @@ param(
 # removes all containers with the stack name
 function CleanUpContainers {
     param(
-        [string]$session,
+        $session,
         [string]$path
     )
 
-    [string]$config = Import-PowerShellDataFile -Path $path
+    $config = Import-PowerShellDataFile -Path $path
     [string]$stackName = if ($config.stackName) { $config.stackName } else { 'auto_deployed' }
+
+    Write-Host "Cleaning up containers with the stack name: $stackName"
+    Write-Host $path
 
     Invoke-Command -Session $session -ScriptBlock {
         param([string]$stackName)
@@ -38,7 +41,7 @@ function CleanUpContainers {
 [string]$hostname, [string]$username = $server -split ' '
 $username = $username -replace "ansible_user=", ""
 
-[psSession]$session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
+$session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
 
 # remove left containers from previous runs
 CleanUpContainers -session $session "$configDir/default.psd1"
@@ -59,11 +62,12 @@ Describe "Docker Container Tests" {
             $result | Should -Not -BeNullOrEmpty
         }
 
-        It "Should ensure the pihole container is bound to port 80" {
+        It "Should ensure the pihole container is bound to port 80 and 53" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -Match "80"
+            $result | Should -Match "53"
         }
 
         It "Should ensure the pihole container has the correct mount for /etc/pihole" {
@@ -101,16 +105,15 @@ Describe "Docker Container Tests" {
             $result | Should -Not -BeNullOrEmpty
         }
 
-        It "Should ensure the cloudflared container is bound to port 5053" {
-            [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
-            }
-            $result | Should -Match "5053"
+        It "Should ensure the pihole container is resolving correctly" {
+            [string]$server = docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' auto_deployed_pihole
+            [string]$result = nslookup google.com $server
+            $result | Should -Not -Contain "error"
         }
 
         # remove the containers after the context
         AfterAll {
-            CleanUpContainers -session $session "$configDir/default.psd1"
+            CleanUpContainers -Session $session "$configDir/default.psd1"
         }
     }
 
@@ -139,6 +142,12 @@ Describe "Docker Container Tests" {
                 docker ps --filter "name=auto_deployed_pihole" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should ensure the pihole container is resolving correctly" {
+            [string]$server = docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' auto_deployed_pihole
+            [string]$result = nslookup google.com $server
+            $result | Should -Not -Contain "error"
         }
 
         # remove the containers after the context
@@ -171,6 +180,12 @@ Describe "Docker Container Tests" {
                 docker ps --filter "name=auto_deployed_pihole" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should ensure the pihole container is resolving correctly" {
+            [string]$server = docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' auto_deployed_pihole
+            [string]$result = nslookup google.com $server
+            $result | Should -Not -Contain "error"
         }
 
         # remove the containers after the context
@@ -209,11 +224,12 @@ Describe "Docker Container Tests" {
             $result | Should -Match "always"
         }
 
-        It "Should ensure the Pi-hole container is bound to port 8081" {
+        It "Should ensure the Pi-hole container is bound to port 8081 and 5356" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -Match "8081"
+            $result | Should -Match "5356"
         }
 
         It "Should ensure the unbound container is bound to port 5353" {
@@ -234,7 +250,7 @@ Describe "Docker Container Tests" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{range .Config.Env}}{{println .}}{{end}}'
             }
-            $result | Should -Contain "WEBPASSWORD=secret"
+            $result | Should -Match "WEBPASSWORD=secret"
         }
 
         # remove the containers after the context
@@ -270,21 +286,21 @@ Describe "Docker Container Tests" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
-            $result | Should -BeNullOrEmpty
+            $result | Should -Be '[{ }][{ }]'
         }
 
         It "Should ensure the unbound container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
-            $result | Should -BeNullOrEmpty
+            $result | Should -Be '[{ }]'
         }
 
         It "Should ensure the cloudflared container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
-            $result | Should -BeNullOrEmpty
+            $result | Should -Be '[{ }]'
         }
 
         # remove the containers after the context

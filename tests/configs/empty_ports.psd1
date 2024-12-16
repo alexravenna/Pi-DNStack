@@ -1,5 +1,6 @@
 @{
-    piholePort      = ""
+    piholeUiPort    = ""
+    piholeDnsPort   = ""
 
     cloudflaredPort = ""
 
