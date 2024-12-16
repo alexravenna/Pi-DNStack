@@ -9,14 +9,18 @@
     # piholePort         = "80"
     # # ! change the password !
     # piholePassword     = "admin"
+    # # empty by default, just an example
+    # extraDNS = @("8.8.8.8", "1.1.1.1")
 
     # unboundEnabled     = $true
     # unboundImage       = "mvance/unbound:latest"
-    # unboundPort        = "53"
+    # # external port, not necessary if you wont use unbound outside this stack
+    # unboundPort        = ""
 
     # cloudflaredEnabled = $true
     # cloudflaredImage   = "cloudflare/cloudflared:latest"
-    # cloudflaredPort    = "5053"
+    # # external port, not necessary if you wont use cloudflared outside this stack
+    # cloudflaredPort    = ""
 
     # piholeVolumes      = [array]@("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
 
