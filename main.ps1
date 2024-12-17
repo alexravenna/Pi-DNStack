@@ -118,40 +118,6 @@ function Get-Data {
     # import data from the psd1 file
     [hashtable]$data = Import-PowerShellDataFile -Path $ConfigPath
 
-    [hashtable]$defaultValues = @{
-        restartPolicy      = [string]"unless-stopped"
-        stackName          = [string]"auto_deployed"
-        containerNetwork   = [string]"bridge"
-
-        piholeImage        = [string]"pihole/pihole:latest"
-        piholeUiPort       = [string]"80"
-        piholeDnsPort      = [string]"53"
-        piholePassword     = [string]"admin"
-        extraDNS           = [array]@()
-
-        unboundEnabled     = [bool]$true
-        unboundImage       = [string]"mvance/unbound:latest"
-        unboundPort        = [string]""
-        cloudflaredEnabled = [bool]$true
-
-        cloudflaredImage   = [string]"cloudflare/cloudflared:latest"
-        cloudflaredPort    = [string]""
-
-        piholeVolumes      = [array]@("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
-
-        commonFlags        = [string]""
-        piholeFlags        = [string]""
-        unboundFlags       = [string]""
-        cloudflaredFlags   = [string]""
-    }
-
-    # set default values if not provided in the .psd1 file
-    foreach ($key in $defaultValues.Keys) {
-        if (-Not $data.ContainsKey($key)) {
-            $data.Add($key, $defaultValues[$key])
-        }
-    }
-
     return $data
 }
 
@@ -211,7 +177,7 @@ function Deploy-Pihole {
 function Deploy-Unbound {
     param([hashtable]$data)
     # choose the image based on arm or x86
-    [string]$image = if ((uname -m) -eq "x86_64") { "mvance/unbound" } else { "mvance/unbound-rpi" }
+    [string]$image = if ((uname -m) -eq "x86_64") { $data['unboundImage'] } else { $data['unboundArmImage'] }
 
     Deploy-Container -name "$($data['stackName'])_unbound" `
         -image $image `
