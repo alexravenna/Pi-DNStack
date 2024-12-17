@@ -98,7 +98,12 @@ New-Item -Path $TempPath -ItemType Directory -Force
 Write-Host "Install dependencies on the remote host..."
 # to work with $become, we need to use Invoke-Expression to pass the variable to the command
 [string]$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
-Invoke-Expression $command
+$output = Invoke-Expression $command
+# check if the output of ansible contains a sudo password failure message
+if ($output -match "Incorrect sudo password") {
+    Write-Host "Error: Incorrect sudo password." -ForegroundColor Red
+    exit 1
+}
 
 # get host information from ansible
 [Array]$servers = Get-Content -Path "$TempPath/host_info.csv"
