@@ -306,10 +306,15 @@ function Set-PiholeConfiguration {
 
         # remove all dns with a nr higher than $nr
         # with help of https://chatgpt.com/share/676050bc-c4bc-8011-aeec-5efcce256287
-        for ($i = $nr; $i -le 10; $i++) {
-            $command = "sed -i '/^PIHOLE_DNS_$i=/d' /etc/pihole/setupVars.conf"
-            docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
-        }
+        do {
+            $command = "sed -i '/^PIHOLE_DNS_$nr=/d' /etc/pihole/setupVars.conf"
+            $output = docker exec "$($data['stackName'])_pihole" /bin/bash -c "grep '^PIHOLE_DNS_$nr=' /etc/pihole/setupVars.conf"
+
+            if ($output) {
+                docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
+                $nr++
+            }
+        } while ($output)
     }
 
     Remove-Old-DnsConfiguration -data $data -nr $nr

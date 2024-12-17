@@ -12,7 +12,7 @@
     # # ! change the password !
     # piholePassword     = "admin"
     # # empty by default, just an example
-    # extraDNS = @("8.8.8.8", "1.1.1.1")
+    # extraDNS           = @("8.8.8.8", "1.1.1.1")
 
     # unboundEnabled     = $true
     # unboundImage       = "mvance/unbound:latest"
