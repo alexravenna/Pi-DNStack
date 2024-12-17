@@ -161,10 +161,15 @@ function Deploy-Container {
         [string]$flags,
         [string]$extra = ""
     )
-    Write-Host "Deploying $name..."
-    [string]$command = "docker run -d --name $name --restart $restartPolicy --network $network"
+    Write-Host "Deploying $name..." 
+    [string]$command = "docker run -d --name $name"
+    if ($restartPolicy) { 
+        $command += " --restart $restartPolicy" 
+    }
+    if ($network) { 
+        $command += " --network $network" 
+    }
 
-    # port mapping
     foreach ($port in $ports) {
         $command += " -p $port"
     }
