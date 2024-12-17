@@ -97,7 +97,7 @@ New-Item -Path $TempPath -ItemType Directory -Force
 # install pwsh, docker on the remote host and get hosts information
 Write-Host "Install dependencies on the remote host..."
 # to work with $become, we need to use Invoke-Expression to pass the variable to the command
-$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
+[string]$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
 Invoke-Expression $command
 
 # get host information from ansible
@@ -181,7 +181,7 @@ function Deploy-Container {
 function Deploy-Pihole {
     param([hashtable]$data)
 
-    $password = $data['piholePassword']
+    [string]$password = $data['piholePassword']
     if ($password -eq "admin") {
         Write-Host "Warning: The default password is used." -ForegroundColor Red
     }
@@ -236,20 +236,20 @@ function Set-PiholeConfiguration {
             [string]$port)
         
         # see https://stackoverflow.com/questions/17157721/how-to-get-a-docker-containers-ip-address-from-the-host
-        $command = "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
-        $IP = Invoke-Expression -Command $command
+        [string]$command = "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
+        [string]$IP = Invoke-Expression -Command $command
         # inner port so no need to take it from the .psd1 file
-        $Network = "$IP#$port"
+        [string]$Network = "$IP#$port"
         return $Network
     }
 
     # get ips of upstream DNS servers as pihole needs ip addresses and not docker hostnames
     try {
         if ($data['unboundEnabled']) {
-            $unboundNetwork = Get-DockerNetwork -data $data -container "unbound" -port "53"
+            [string]$unboundNetwork = Get-DockerNetwork -data $data -container "unbound" -port "53"
         }
         if ($data['cloudflaredEnabled']) {
-            $cloudflaredNetwork = Get-DockerNetwork -data $data -container "cloudflared" -port "5053"
+            [string]$cloudflaredNetwork = Get-DockerNetwork -data $data -container "cloudflared" -port "5053"
         }
     }
     catch {
@@ -277,7 +277,7 @@ function Set-PiholeConfiguration {
         docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
     }
 
-    $nr = 1
+    [int]$nr = 1
 
     try {
         foreach ($dns in $data['extraDNS']) {
@@ -307,8 +307,8 @@ function Set-PiholeConfiguration {
         # remove all dns with a nr higher than $nr
         # with help of https://chatgpt.com/share/676050bc-c4bc-8011-aeec-5efcce256287
         do {
-            $command = "sed -i '/^PIHOLE_DNS_$nr=/d' /etc/pihole/setupVars.conf"
-            $output = docker exec "$($data['stackName'])_pihole" /bin/bash -c "grep '^PIHOLE_DNS_$nr=' /etc/pihole/setupVars.conf"
+            [string]$command = "sed -i '/^PIHOLE_DNS_$nr=/d' /etc/pihole/setupVars.conf"
+            [string]$output = docker exec "$($data['stackName'])_pihole" /bin/bash -c "grep '^PIHOLE_DNS_$nr=' /etc/pihole/setupVars.conf"
 
             if ($output) {
                 docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
