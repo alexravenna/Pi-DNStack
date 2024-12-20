@@ -268,3 +268,19 @@ function Set-PiholeConfiguration {
 
     Remove-Old-DnsConfiguration -data $data -nr $nr
 }
+
+function Get-FunctionDefinitions {
+    # store the functions in variables to send them to the remote host
+    # based on https://stackoverflow.com/questions/11367367/how-do-i-include-a-locally-defined-function-when-using-powershells-invoke-comma#:~:text=%24fooDef%20%3D%20%22function%20foo%20%7B%20%24%7Bfunction%3Afoo%7D%20%7D%22%0A%0AInvoke%2DCommand%20%2DArgumentList%20%24fooDef%20%2DComputerName%20someserver.example.com%20%2DScriptBlock%20%7B%0A%20%20%20%20Param(%20%24fooDef%20)%0A%0A%20%20%20%20.%20(%5BScriptBlock%5D%3A%3ACreate(%24fooDef))%0A%0A%20%20%20%20Write%2DHost%20%22You%20can%20call%20the%20function%20as%20often%20as%20you%20like%3A%22%0A%20%20%20%20foo%20%22Bye%22%0A%20%20%20%20foo%20%22Adieu!%22%0A%7D
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$functions)
+    [array]$functionsDefinitions = @()
+    foreach ($function in $functions) {
+        $functionsDefinitions += "function $function { `n" + 
+            (Get-Command $function).ScriptBlock.ToString() +
+        "`n}"
+    }
+
+    return $functionsDefinitions
+}

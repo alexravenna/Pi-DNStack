@@ -54,23 +54,9 @@ if ($output -match "Incorrect sudo password") {
 # cleanup
 Remove-Item -Path $TempPath -Recurse -Force
 
-# store the functions in variables to send them to the remote host
-# based on https://stackoverflow.com/questions/11367367/how-do-i-include-a-locally-defined-function-when-using-powershells-invoke-comma#:~:text=%24fooDef%20%3D%20%22function%20foo%20%7B%20%24%7Bfunction%3Afoo%7D%20%7D%22%0A%0AInvoke%2DCommand%20%2DArgumentList%20%24fooDef%20%2DComputerName%20someserver.example.com%20%2DScriptBlock%20%7B%0A%20%20%20%20Param(%20%24fooDef%20)%0A%0A%20%20%20%20.%20(%5BScriptBlock%5D%3A%3ACreate(%24fooDef))%0A%0A%20%20%20%20Write%2DHost%20%22You%20can%20call%20the%20function%20as%20often%20as%20you%20like%3A%22%0A%20%20%20%20foo%20%22Bye%22%0A%20%20%20%20foo%20%22Adieu!%22%0A%7D
-[string]$deployContainer = "function Deploy-Container { `n" + 
-                   (Get-Command Deploy-Container).ScriptBlock.ToString() + 
-"`n}"
-[string]$deployPihole = "function Deploy-Pihole { `n" + 
-                (Get-Command Deploy-Pihole).ScriptBlock.ToString() + 
-"`n}"
-[string]$deployUnbound = "function Deploy-Unbound { `n" + 
-                 (Get-Command Deploy-Unbound).ScriptBlock.ToString() + 
-"`n}"
-[string]$deployCloudflared = "function Deploy-Cloudflared { `n" + 
-                     (Get-Command Deploy-Cloudflared).ScriptBlock.ToString() + 
-"`n}"
-[string]$setPiholeConfiguration = "function Set-PiholeConfiguration { `n" + 
-                     (Get-Command Set-PiholeConfiguration).ScriptBlock.ToString() +
-"`n}"
+# store the needed functions from the module in variables to send them to the remote host
+$functions = @("Deploy-Container", "Deploy-Pihole", "Deploy-Unbound", "Deploy-Cloudflared", "Set-PiholeConfiguration")
+$functionsDefinitions = Get-FunctionDefinitions -functions $functions
 
 # deploy the stack on each host
 # deploying itself could be done trough ansible, but we will use PowerShell to make further changes
@@ -84,23 +70,14 @@ foreach ($server in $servers) {
     
     # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
-        param([hashtable]$data,
+        param([Parameter(Mandatory = $true)]        
+            [hashtable]$data,
             [Parameter(Mandatory = $true)]
-            [string]$deployContainer, 
-            [Parameter(Mandatory = $true)]
-            [string]$deployPihole, 
-            [Parameter(Mandatory = $true)]
-            [string]$deployUnbound, 
-            [Parameter(Mandatory = $true)]
-            [string]$deployCloudflared,
-            [Parameter(Mandatory = $true)]
-            [string]$setPiholeConfiguration)
+            [array]$functionDefinitions)
         # recreate the functions on the remote host
-        . ([ScriptBlock]::Create($deployContainer))
-        . ([ScriptBlock]::Create($deployPihole))
-        . ([ScriptBlock]::Create($deployUnbound))
-        . ([ScriptBlock]::Create($deployCloudflared))
-        . ([ScriptBlock]::Create($setPiholeConfiguration))
+        foreach ($functionDef in $functionDefinitions) {
+            . ([ScriptBlock]::Create($functionDef))
+        }
 
         # pihole
         Deploy-Pihole -data $data
@@ -123,7 +100,7 @@ foreach ($server in $servers) {
 
         # config
         Set-PiholeConfiguration -data $data
-    } -ArgumentList $data, $deployContainer, $deployPihole, $deployUnbound, $deployCloudflared, $setPiholeConfiguration
+    } -ArgumentList $data, $functionsDefinitions
     
     # cleanup
     Remove-PSSession -Session $session
