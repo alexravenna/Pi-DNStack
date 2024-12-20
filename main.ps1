@@ -1,22 +1,26 @@
 param(
+    [Parameter(Mandatory = $false)]
     [ValidateScript({
             $fileInfo = New-Object System.IO.FileInfo($_)
             $fileInfo.Exists -and $fileInfo.Directory.Exists
         })]
     [string]$ConfigPath = "./main.psd1",
 
+    [Parameter(Mandatory = $false)]
     [ValidateScript({
             $fileInfo = New-Object System.IO.FileInfo($_)
             $fileInfo.Exists -and $fileInfo.Directory.Exists
         })]
     [string]$InventoryPath = "./inventory.ini",
 
+    [Parameter(Mandatory = $false)]
     [ValidateScript({
             $fileInfo = New-Object System.IO.FileInfo($_)
             $fileInfo.Exists -and $fileInfo.Directory.Exists
         })]
     [string]$TempPath = "./temp",
 
+    [Parameter(Mandatory = $false)]
     # become method for ansible: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_privilege_escalation.html
     [string]$become = "ask-become-pass"
 )
@@ -112,6 +116,7 @@ Remove-Item -Path $TempPath -Recurse -Force
 
 function Get-Data {
     param(
+        [Parameter(Mandatory = $true)]
         [string]$ConfigPath
     )
 
@@ -123,13 +128,21 @@ function Get-Data {
 
 function Deploy-Container {
     param(
+        [Parameter(Mandatory = $true)]
         [string]$name,
+        [Parameter(Mandatory = $true)]
         [string]$image,
+        [Parameter(Mandatory = $false)]
         [string]$network,
+        [Parameter(Mandatory = $false)]
         [string]$restartPolicy,
+        [Parameter(Mandatory = $false)]
         [array]$ports,
+        [Parameter(Mandatory = $false)]
         [array]$volumes,
-        [string]$flags,
+        [Parameter(Mandatory = $false)]
+        [string]$flags = "",
+        [Parameter(Mandatory = $false)]
         [string]$extra = ""
     )
     Write-Host "Deploying $name..." 
@@ -155,7 +168,9 @@ function Deploy-Container {
 }
 
 function Deploy-Pihole {
-    param([hashtable]$data)
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$data)
 
     [string]$password = $data['piholePassword']
     if ($password -eq "admin") {
@@ -175,7 +190,9 @@ function Deploy-Pihole {
 }
 
 function Deploy-Unbound {
-    param([hashtable]$data)
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$data)
     # choose the image based on arm or x86
     [string]$image = if ((uname -m) -eq "x86_64") { $data['unboundImage'] } else { $data['unboundArmImage'] }
 
@@ -189,7 +206,9 @@ function Deploy-Unbound {
 }
 
 function Deploy-Cloudflared {
-    param([hashtable]$data)
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$data)
 
     Deploy-Container -name "$($data['stackName'])_cloudflared" `
         -image "cloudflare/cloudflared" `
@@ -202,7 +221,9 @@ function Deploy-Cloudflared {
 }
 
 function Set-PiholeConfiguration {
-    param([hashtable]$data)
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$data)
 
     Write-Host "Configuring Pi-hole to use the correct upstream DNS servers..."
 
@@ -235,8 +256,11 @@ function Set-PiholeConfiguration {
 
     function Set-DnsConfiguration {
         param(
+            [Parameter(Mandatory = $true)]
             [hashtable]$data,
+            [Parameter(Mandatory = $true)]
             [string]$nr,
+            [Parameter(Mandatory = $true)]
             [string]$dnsNetwork
         )
 
@@ -276,7 +300,9 @@ function Set-PiholeConfiguration {
 
     function Remove-Old-DnsConfiguration {
         param(
+            [Parameter(Mandatory = $true)]
             [hashtable]$data,
+            [Parameter(Mandatory = $true)]
             [int]$nr
         )
 
@@ -322,15 +348,20 @@ foreach ($server in $servers) {
     $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
     
     # get the data from the .psd1 file
-    [hashtable]$data = Get-Data -ConfigPath $ConfigPath --$become
+    [hashtable]$data = Get-Data -ConfigPath $ConfigPath
     
     # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
         param([hashtable]$data,
+            [Parameter(Mandatory = $true)]
             [string]$deployContainer, 
+            [Parameter(Mandatory = $true)]
             [string]$deployPihole, 
+            [Parameter(Mandatory = $true)]
             [string]$deployUnbound, 
+            [Parameter(Mandatory = $true)]
             [string]$deployCloudflared,
+            [Parameter(Mandatory = $true)]
             [string]$setPiholeConfiguration)
         # recreate the functions on the remote host
         . ([ScriptBlock]::Create($deployContainer))
