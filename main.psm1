@@ -12,6 +12,7 @@ function Invoke-CommandWithCheck {
         if ($LASTEXITCODE -ne 0) {
             throw "Command failed with exit code $LASTEXITCODE : $Command"
         }
+        return $output
     }
     catch {
         throw "Error executing command: `"$Command`" Error: `"$output`""

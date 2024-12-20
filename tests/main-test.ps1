@@ -108,8 +108,8 @@ Describe "Docker Container Tests" {
             }
             [string]$result = Invoke-Command -Session $session -ScriptBlock { 
                 nslookup google.com $server
-            }
-            $result | Should -Not -Match "Error"
+            } -ArgumentList $server
+            $result | Should -Match "Non-authoritative answer"
         }
 
         # remove the containers after the context
@@ -151,8 +151,8 @@ Describe "Docker Container Tests" {
             }
             [string]$result = Invoke-Command -Session $session -ScriptBlock { 
                 nslookup google.com $server
-            }
-            $result | Should -Not -Match "Error"
+            } -ArgumentList $server
+            $result | Should -Match "Non-authoritative answer"
         }
 
         # remove the containers after the context
@@ -193,8 +193,8 @@ Describe "Docker Container Tests" {
             }
             [string]$result = Invoke-Command -Session $session -ScriptBlock { 
                 nslookup google.com $server
-            }
-            $result | Should -Not -Match "Error"
+            } -ArgumentList $server
+            $result | Should -Match "Non-authoritative answer"
         }
 
         # remove the containers after the context
