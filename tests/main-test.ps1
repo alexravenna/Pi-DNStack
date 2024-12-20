@@ -295,21 +295,21 @@ Describe "Docker Container Tests" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
-            $result | Should -Be '[{ }][{ }]'
+            $result | Should -BeNullOrEmpty
         }
 
         It "Should ensure the unbound container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
-            $result | Should -Be '[{ }]'
+            $result | Should -BeNullOrEmpty
         }
 
         It "Should ensure the cloudflared container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
-            $result | Should -Be '[{ }]'
+            $result | Should -BeNullOrEmpty
         }
 
         # remove the containers after the context

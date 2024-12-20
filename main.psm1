@@ -107,7 +107,11 @@ function Deploy-Container {
     }
 
     foreach ($port in $ports) {
-        $command += " -p $port"
+        # with help of https://chatgpt.com/share/67669ebb-9d50-8011-a317-88c6aa993d1d
+        # if there is an outwards port map it
+        if ($port -match '^\d+:') {
+            $command += " -p $port"
+        }
     }
 
     foreach ($volume in $volumes) {

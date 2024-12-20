@@ -11,9 +11,9 @@
     # pihole docker image
     piholeImage        = "pihole/pihole:latest"
     # external web ui port (you can then access the pihole web ui at http://localhost/admin/login.php:port)
-    piholeUiPort       = "80"
+    piholeUiPort       = ""
     # external dns port
-    piholeDnsPort      = "53"
+    piholeDnsPort      = ""
     
     # ! change the password !
     # this is the password to access the pihole web ui
@@ -30,7 +30,7 @@
     # image used for arm devices like raspberry pi's
     unboundArmImage    = "mvance/unbound-rpi"
     # external port, not necessary if you wont use unbound outside this stack
-    unboundPort        = "54"
+    unboundPort        = ""
 
     # if you want to use cloudflared as upstream DNS server
     cloudflaredEnabled = $true
