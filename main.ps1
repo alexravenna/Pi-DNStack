@@ -40,13 +40,17 @@ else {
 New-Item -Path $TempPath -ItemType Directory -Force
 # install pwsh, docker on the remote host and get hosts information
 Write-Host "Install dependencies on the remote host..."
-# to work with $become, we need to use Invoke-Expression to pass the variable to the command
 [string]$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
-$output = Invoke-Expression $command
-# check if the output of ansible contains a sudo password failure message
-if ($output -match "Incorrect sudo password") {
-    Write-Host "Error: Incorrect sudo password." -ForegroundColor Red
-    exit 1
+try {
+    Invoke-CommandWithCheck $command
+}
+catch {
+    if ($_.Exception.Message -match "Incorrect sudo password") {
+        throw "Error: Incorrect sudo password"
+    }
+    else {
+        throw $($_.Exception.Message)
+    }
 }
 
 # get host information from ansible
@@ -55,7 +59,7 @@ if ($output -match "Incorrect sudo password") {
 Remove-Item -Path $TempPath -Recurse -Force
 
 # store the needed functions from the module in variables to send them to the remote host
-$functions = @("Deploy-Container", "Deploy-Pihole", "Deploy-Unbound", "Deploy-Cloudflared", "Set-PiholeConfiguration")
+$functions = @("Deploy-Container", "Deploy-Pihole", "Deploy-Unbound", "Deploy-Cloudflared", "Set-PiholeConfiguration", "Invoke-CommandWithCheck")
 $functionsDefinitions = Get-FunctionDefinitions -functions $functions
 
 # deploy the stack on each host

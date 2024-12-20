@@ -1,62 +1,66 @@
+# powershell does not seem to support -ErrorAction Stop on external commands so we need to manually check the exit code of each command, this is a wrapper for it
+function Invoke-CommandWithCheck {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Command
+    )
+    # we need the catch block to catch the error msg: $_
+    try {
+        # $($_.Exception.Message) does not work properly with external commands so we need to store the whole output to print it on error
+        # 2>&1 redirects stderr to stdout see https://www.youtube.com/watch?v=zMKacHGuIHI as = in pwsh only takes the stdout stream
+        $output = Invoke-Expression "$Command 2>&1"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Command failed with exit code $LASTEXITCODE : $Command"
+        }
+    }
+    catch {
+        throw "Error executing command: `"$Command`" Error: `"$output`""
+    }
+}
+
 function Install-Ansible {
     # see https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html
     if (Get-Command dnf -ErrorAction SilentlyContinue) {
         # rhel using dnf
         Write-Host "Installing Ansible on RHEL-based system..."
-        try {
-            sudo dnf install -y ansible
-        }
-        catch {
-            Write-Host "Error installing Ansible with dnf." -ForegroundColor Red
-            exit 1
-        }
+        Invoke-CommandWithCheck "sudo dnf install -y ansible"
     }
     elseif (Get-Command apt -ErrorAction SilentlyContinue) {
         # debian/ubuntu using apt
         Write-Host "Installing Ansible on Debian-based system..."
         try {
-            sudo apt update
-            sudo apt install -y software-properties-common
-            sudo add-apt-repository --yes --update ppa:ansible/ansible
-            sudo apt install -y ansible
+            Invoke-CommandWithCheck "sudo apt update"
+            Invoke-CommandWithCheck "sudo apt install -y software-properties-common"
+            Invoke-CommandWithCheck "sudo add-apt-repository --yes --update ppa:ansible/ansible"
+            Invoke-CommandWithCheck "sudo apt install -y ansible"
         }
         catch {
-            Write-Host "Error installing Ansible with apt." -ForegroundColor Red
-            exit 1
+            throw "Error installing Ansible with apt."
         }
     }
     elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
         # arch using pacman
         Write-Host "Installing Ansible on Arch-based system..."
         try {
-            sudo pacman -Sy ansible
+            Invoke-CommandWithCheck "sudo pacman -Sy ansible"
         }
         catch {
-            Write-Host "Error installing Ansible with pacman." -ForegroundColor Red
-            exit 1
+            throw "Error installing Ansible with pacman."
         }
     }
     elseif ($IsWindows) {
-        Write-Host "Windows not supported. Please use WSL." -ForegroundColor Red
+        throw "Windows not supported. Please use WSL."
     }
     else {
-        Write-Host "Unsupported Linux distribution. Please install Ansible manually." -ForegroundColor Red
-        exit 1
+        throw "Unsupported Linux distribution. Please install Ansible manually."
     }
 
     # verify installation
-    try {
-        if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
-            Write-Host "Ansible installation failed. Please install Ansible manually." -ForegroundColor Red
-            exit 1
-        }
-        else {
-            Write-Host "Ansible installed successfully." -ForegroundColor Green
-        }
+    if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
+        throw "Ansible installation failed. Please install Ansible manually."
     }
-    catch {
-        Write-Host "Error verifying Ansible installation: $_" -ForegroundColor Red
-        exit 1
+    else {
+        Write-Host "Ansible installed successfully." -ForegroundColor Green
     }
 }
 
@@ -180,8 +184,7 @@ function Set-PiholeConfiguration {
             [string]$port)
         
         # see https://stackoverflow.com/questions/17157721/how-to-get-a-docker-containers-ip-address-from-the-host
-        [string]$command = "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
-        [string]$IP = Invoke-Expression -Command $command
+        [string]$IP = Invoke-CommandWithCheck "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
         # inner port so no need to take it from the .psd1 file
         [string]$Network = "$IP#$port"
         return $Network
@@ -197,8 +200,7 @@ function Set-PiholeConfiguration {
         }
     }
     catch {
-        Write-Host "Error getting IP addresses: $_" -ForegroundColor Red
-        exit 1
+        throw "Error getting IP addresses: $_"
     }
 
     function Set-DnsConfiguration {
@@ -241,8 +243,7 @@ function Set-PiholeConfiguration {
         }
     }
     catch {
-        Write-Host "Get-Error updating Pi-hole configuration: $_" -ForegroundColor Red
-        exit 1
+        throw "Get-Error updating Pi-hole configuration: $_"
     }
 
     function Remove-Old-DnsConfiguration {
