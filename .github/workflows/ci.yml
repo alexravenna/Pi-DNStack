@@ -28,7 +28,7 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install -y powershell
 
-            - name: Execute the test script using my homelab as remote host
+            - name: Execute the main test script using my homelab as remote host
               shell: pwsh
               run: |
-                  ./tests/script-test.ps1 -password '${{ secrets.SERVER_PWD }}'
+                  ./tests/main-test.ps1 -password '${{ secrets.SERVER_PWD }}'
