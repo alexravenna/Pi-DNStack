@@ -19,9 +19,6 @@ function CleanUpContainers {
     $config = Import-PowerShellDataFile -Path $path
     [string]$stackName = if ($config.stackName) { $config.stackName } else { 'auto_deployed' }
 
-    Write-Host "Cleaning up containers with the stack name: $stackName"
-    Write-Host $path
-
     Invoke-Command -Session $session -ScriptBlock {
         param([string]$stackName)
         [string]$command = "docker ps -a --filter name=$stackName -q"
@@ -106,9 +103,13 @@ Describe "Docker Container Tests" {
         }
 
         It "Should ensure the pihole container is resolving correctly" {
-            [string]$server = docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' auto_deployed_pihole
-            [string]$result = nslookup google.com $server
-            $result | Should -Not -Contain "error"
+            [string]$server = Invoke-Command -Session $session -ScriptBlock { 
+                docker inspect auto_deployed_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+            }
+            [string]$result = Invoke-Command -Session $session -ScriptBlock { 
+                nslookup google.com $server
+            }
+            $result | Should -Not -Match "Error"
         }
 
         # remove the containers after the context
@@ -145,9 +146,13 @@ Describe "Docker Container Tests" {
         }
 
         It "Should ensure the pihole container is resolving correctly" {
-            [string]$server = docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' auto_deployed_pihole
-            [string]$result = nslookup google.com $server
-            $result | Should -Not -Contain "error"
+            [string]$server = Invoke-Command -Session $session -ScriptBlock { 
+                docker inspect auto_deployed_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+            }
+            [string]$result = Invoke-Command -Session $session -ScriptBlock { 
+                nslookup google.com $server
+            }
+            $result | Should -Not -Match "Error"
         }
 
         # remove the containers after the context
@@ -183,9 +188,13 @@ Describe "Docker Container Tests" {
         }
 
         It "Should ensure the pihole container is resolving correctly" {
-            [string]$server = docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' auto_deployed_pihole
-            [string]$result = nslookup google.com $server
-            $result | Should -Not -Contain "error"
+            [string]$server = Invoke-Command -Session $session -ScriptBlock { 
+                docker inspect auto_deployed_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+            }
+            [string]$result = Invoke-Command -Session $session -ScriptBlock { 
+                nslookup google.com $server
+            }
+            $result | Should -Not -Match "Error"
         }
 
         # remove the containers after the context
