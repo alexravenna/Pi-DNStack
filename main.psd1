@@ -44,7 +44,7 @@
     # volumes to mount for the pihole container
     piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
 
-    # extra docker flags to pass to all the containers
+    # extra docker flags to pass to all the containers, may not work with declarative as we don't have a way to check this
     # see https://docs.docker.com/reference/cli/docker/container/exec/
     # exemple: "--cap-add=NET_ADMIN"
     commonFlags        = ""
