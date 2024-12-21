@@ -30,6 +30,12 @@ Example inventory.ini:
 192.168.1.10 ansible_user=ansible
 ```
 
+Modify `main.psd1` as needed (change at least `piholePassword`)
+
+```bash
+nano main.psd1
+```
+
 Run the script
 
 ```bash
