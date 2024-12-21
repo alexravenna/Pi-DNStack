@@ -1,22 +1,23 @@
 param(
     [Parameter(Mandatory = $false)]
     [ValidateScript({
-            $fileInfo = New-Object System.IO.FileInfo($_)
-            $fileInfo.Exists -and $fileInfo.Directory.Exists
+            # with help of qwen to use system.io.path
+            $fullPath = [System.IO.Path]::GetFullPath($_)
+            [System.IO.File]::Exists($fullPath) -and [System.IO.Directory]::Exists([System.IO.Path]::GetDirectoryName($fullPath))
         })]
     [string]$ConfigPath = "./main.psd1",
 
     [Parameter(Mandatory = $false)]
     [ValidateScript({
-            $fileInfo = New-Object System.IO.FileInfo($_)
-            $fileInfo.Exists -and $fileInfo.Directory.Exists
+            $fullPath = [System.IO.Path]::GetFullPath($_)
+            [System.IO.File]::Exists($fullPath) -and [System.IO.Directory]::Exists([System.IO.Path]::GetDirectoryName($fullPath))
         })]
     [string]$InventoryPath = "./inventory.ini",
 
     [Parameter(Mandatory = $false)]
     [ValidateScript({
-            $fileInfo = New-Object System.IO.FileInfo($_)
-            $fileInfo.Exists -and $fileInfo.Directory.Exists
+            $fullPath = [System.IO.Path]::GetFullPath($_)
+            [System.IO.Directory]::Exists($fullPath)
         })]
     [string]$TempPath = "./temp",
 
