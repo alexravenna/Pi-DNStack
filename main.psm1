@@ -325,18 +325,6 @@ function Set-PiholeConfiguration {
         return $Network
     }
 
-    # get ips of upstream DNS servers as pihole needs ip addresses and not docker hostnames
-    try {
-        if ($data['unboundEnabled']) {
-            [string]$unboundNetwork = Get-DockerNetwork -data $data -container "unbound" -port "53"
-        }
-        if ($data['cloudflaredEnabled']) {
-            [string]$cloudflaredNetwork = Get-DockerNetwork -data $data -container "cloudflared" -port "5053"
-        }
-    }
-    catch {
-        throw "Error getting IP addresses: $_"
-    }
     function Set-DnsConfiguration {
         param(
             [Parameter(Mandatory = $true)]
@@ -360,25 +348,24 @@ function Set-PiholeConfiguration {
         docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
     }
 
-    [int]$nr = 1
+    function Set-DNSSECConfiguration {
+        param(
+            [Parameter(Mandatory = $true)]
+            [hashtable]$data
+        )
+        $dnssecValue = if ($data['DNSSECEnabled']) { 'true' } else { 'false' }
 
-    try {
-        foreach ($dns in $data['extraDNS']) {
-            Set-DnsConfiguration -data $data -nr $nr -dnsNetwork $dns
-            $nr++
-        }
-        if ($data['unboundEnabled']) {
-            Set-DnsConfiguration -data $data -nr $nr -dnsNetwork $unboundNetwork
-            $nr++
-        }
-        if ($data['cloudflaredEnabled']) {
-            Set-DnsConfiguration -data $data -nr $nr -dnsNetwork $cloudflaredNetwork
-            $nr++
-        }
+        # w help of https://chatgpt.com/share/676ad29c-8da4-8011-bb80-e9c2b8ed9019
+        $command = @"
+if grep -q '^DNSSEC=' /etc/pihole/setupVars.conf; then
+    sed -i 's/^DNSSEC=.*/DNSSEC=$dnssecValue/' /etc/pihole/setupVars.conf
+else
+    echo 'DNSSEC=$dnssecValue' >> /etc/pihole/setupVars.conf
+fi
+"@
+        docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
     }
-    catch {
-        throw "Get-Error updating Pi-hole configuration: $_"
-    }
+
     function Remove-Old-DnsConfiguration {
         param(
             [Parameter(Mandatory = $true)]
@@ -400,7 +387,42 @@ function Set-PiholeConfiguration {
         } while ($output)
     }
 
+    # get ips of upstream DNS servers as pihole needs ip addresses and not docker hostnames
+    try {
+        if ($data['unboundEnabled']) {
+            [string]$unboundNetwork = Get-DockerNetwork -data $data -container "unbound" -port "53"
+        }
+        if ($data['cloudflaredEnabled']) {
+            [string]$cloudflaredNetwork = Get-DockerNetwork -data $data -container "cloudflared" -port "5053"
+        }
+    }
+    catch {
+        throw "Error getting IP addresses: $_"
+    }
+
+    [int]$nr = 1
+
+    try {
+        foreach ($dns in $data['extraDNS']) {
+            Set-DnsConfiguration -data $data -nr $nr -dnsNetwork $dns
+            $nr++
+        }
+        if ($data['unboundEnabled']) {
+            Set-DnsConfiguration -data $data -nr $nr -dnsNetwork $unboundNetwork
+            $nr++
+        }
+        if ($data['cloudflaredEnabled']) {
+            Set-DnsConfiguration -data $data -nr $nr -dnsNetwork $cloudflaredNetwork
+            $nr++
+        }
+    }
+    catch {
+        throw "Get-Error updating Pi-hole configuration: $_"
+    }
+    
     Remove-Old-DnsConfiguration -data $data -nr $nr
+    
+    Set-DNSSECConfiguration -data $data
 }
 function Get-FunctionDefinitions {
     # store the functions in variables to send them to the remote host

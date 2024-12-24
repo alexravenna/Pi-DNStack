@@ -16,6 +16,9 @@
     piholeUiPort       = "80"
     # external dns port
     piholeDnsPort      = "53"
+    # enable or disable DDNS see 
+    # see https://docs.pi-hole.net/guides/misc/tor/dnssec/
+    DNSSECEnabled      = $true
     
     # ! change the password !
     # this is the password to access the pihole web ui

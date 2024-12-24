@@ -108,6 +108,13 @@ Describe "Docker Container Tests" {
             } -ArgumentList $server
             $result | Should -Match "Non-authoritative answer"
         }
+
+        It "Should ensure DNSSEC is enabled" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+            }
+            $result | Should -Match "DNSSEC=true"
+        }
     }
 
     Context "Unbound Disabled" {
@@ -252,6 +259,13 @@ Describe "Docker Container Tests" {
             }
             $result | Should -Match "/etc/test/pihole"
             $result | Should -Match "/etc/test/dnsmasq.d"
+        }
+
+        It "Should ensure DNSSEC is disabled" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+            }
+            $result | Should -Match "DNSSEC=false"
         }
     }
 

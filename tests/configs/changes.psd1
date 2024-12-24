@@ -14,6 +14,7 @@
     piholeUiPort       = "8081"
     # external dns port
     piholeDnsPort      = "5356"
+    DNSSECEnabled      = $false
     
     # ! change the password !
     # this is the password to access the pihole web ui
