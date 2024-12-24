@@ -245,6 +245,14 @@ Describe "Docker Container Tests" {
             }
             $result | Should -Match "WEBPASSWORD=secret"
         }
+
+        It "Should ensure volume path is changed" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker inspect auto_deployed_pihole --format '{{range .Mounts}}{{.Source}}{{end}}'
+            }
+            $result | Should -Match "/etc/test/pihole"
+            $result | Should -Match "/etc/test/dnsmasq.d"
+        }
     }
 
     Context "Host Network" {

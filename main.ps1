@@ -112,7 +112,6 @@ foreach ($server in $servers) {
             Write-Host "Skipping Cloudflared deployment..."
         }
 
-        # config
         Set-PiholeConfiguration -data $data
     } -ArgumentList $data, $functionsDefinitions
     

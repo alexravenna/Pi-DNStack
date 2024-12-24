@@ -40,7 +40,7 @@
     cloudflaredPort    = "5054"
 
     # volumes to mount for the pihole container
-    piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
+    piholeVolumes      = @("/etc/test/pihole:/etc/pihole", "/etc/test/dnsmasq.d:/etc/dnsmasq.d")
 
     # extra docker flags to pass to all the containers
     # see https://docs.docker.com/reference/cli/docker/container/exec/
