@@ -311,7 +311,7 @@ function Set-PiholeConfiguration {
         [Parameter(Mandatory = $true)]
         [hashtable]$data)
 
-    Write-Host "Configuring Pi-hole to use the correct upstream DNS servers..."
+    Write-Host "Configuring Pi-hole..."
 
     function Get-DockerNetwork {
         param([hashtable]$data,
@@ -387,6 +387,41 @@ fi
         } while ($output)
     }
 
+    function Set-Addlists {
+        param(
+            [Parameter(Mandatory = $true)]
+            [hashtable]$data
+        )
+
+
+        foreach ($adlist in $data['adlists']) {
+            $command = @"
+INSERT OR IGNORE INTO adlist (address, enabled, date_added, date_modified, comment, date_updated, number, invalid_domains, status)
+VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'now') as int), 'Added via Pi-DNStack', NULL, 0, 0, 0);
+"@
+            docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "$command"
+
+        }
+        docker exec "$($data['stackName'])_pihole" pihole updateGravity 2>&1 >/dev/null
+    }
+
+    # remove old adlist in the db but not in the .psd1 file
+    function Remove-Addlists {
+        param(
+            [Parameter(Mandatory = $true)]
+            [hashtable]$data
+        )
+
+        $existingAdlists = docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "SELECT address FROM adlist;"
+        $existingAdlists = $existingAdlists -split "`n"
+
+        foreach ($adlist in $existingAdlists) {
+            if ($adlist -notin $data['adlists']) {
+                docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "DELETE FROM adlist WHERE address='$adlist';"
+            }
+        }
+    }
+
     # get ips of upstream DNS servers as pihole needs ip addresses and not docker hostnames
     try {
         if ($data['unboundEnabled']) {
@@ -421,8 +456,10 @@ fi
     }
     
     Remove-Old-DnsConfiguration -data $data -nr $nr
-    
     Set-DNSSECConfiguration -data $data
+
+    Remove-Addlists -data $data
+    Set-Addlists -data $data
 }
 function Get-FunctionDefinitions {
     # store the functions in variables to send them to the remote host

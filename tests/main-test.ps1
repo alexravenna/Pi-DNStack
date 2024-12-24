@@ -115,6 +115,13 @@ Describe "Docker Container Tests" {
             }
             $result | Should -Match "DNSSEC=true"
         }
+
+        It "Should ensure the adlists are set correctly" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
+            }
+            $result | Should -Match "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+        }
     }
 
     Context "Unbound Disabled" {
@@ -266,6 +273,14 @@ Describe "Docker Container Tests" {
                 docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "DNSSEC=false"
+        }
+
+        It "Should ensure the adlists are set correctly" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
+            }
+            $result | Should -Match "https://test.com"
+            $result | Should -Not -Match "https://v.firebog.net/hosts/static/w3kbl.txt"
         }
     }
 

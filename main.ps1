@@ -113,6 +113,8 @@ foreach ($server in $servers) {
         }
 
         Set-PiholeConfiguration -data $data
+
+        Write-Host "Stack deployed successfully." -ForegroundColor Green
     } -ArgumentList $data, $functionsDefinitions
     
     # cleanup
