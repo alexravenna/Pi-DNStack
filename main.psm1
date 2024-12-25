@@ -328,6 +328,7 @@ function Set-PiholeConfiguration {
         return $Network
     }
 
+    # region upsteam DNS
     function Set-DnsConfiguration {
         param(
             [Parameter(Mandatory = $true)]
@@ -348,108 +349,6 @@ function Set-PiholeConfiguration {
         echo 'PIHOLE_DNS_$nr=$dnsNetwork' >> /etc/pihole/setupVars.conf
     fi
 "@
-        docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
-    }
-
-    function Set-DNSSECConfiguration {
-        param(
-            [Parameter(Mandatory = $true)]
-            [hashtable]$data
-        )
-        $dnssecValue = if ($data['DNSSECEnabled']) { 'true' } else { 'false' }
-
-        # w help of https://chatgpt.com/share/676ad29c-8da4-8011-bb80-e9c2b8ed9019
-        $command = @"
-if grep -q '^DNSSEC=' /etc/pihole/setupVars.conf; then
-    sed -i 's/^DNSSEC=.*/DNSSEC=$dnssecValue/' /etc/pihole/setupVars.conf
-else
-    echo 'DNSSEC=$dnssecValue' >> /etc/pihole/setupVars.conf
-fi
-"@
-        docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
-    }
-
-    function Remove-Old-DnsConfiguration {
-        param(
-            [Parameter(Mandatory = $true)]
-            [hashtable]$data,
-            [Parameter(Mandatory = $true)]
-            [int]$nr
-        )
-
-        # remove all dns with a nr higher than $nr
-        # with help of https://chatgpt.com/share/676050bc-c4bc-8011-aeec-5efcce256287
-        do {
-            [string]$command = "sed -i '/^PIHOLE_DNS_$nr=/d' /etc/pihole/setupVars.conf"
-            [string]$output = docker exec "$($data['stackName'])_pihole" /bin/bash -c "grep '^PIHOLE_DNS_$nr=' /etc/pihole/setupVars.conf"
-
-            if ($output) {
-                docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
-                $nr++
-            }
-        } while ($output)
-    }
-
-    function Set-Addlists {
-        param(
-            [Parameter(Mandatory = $true)]
-            [hashtable]$data
-        )
-
-
-        foreach ($adlist in $data['adlists']) {
-            $command = @"
-INSERT OR IGNORE INTO adlist (address, enabled, date_added, date_modified, comment, date_updated, number, invalid_domains, status)
-VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'now') as int), 'Added via Pi-DNStack', NULL, 0, 0, 0);
-"@
-            docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "$command"
-
-        }
-        docker exec "$($data['stackName'])_pihole" pihole updateGravity 2>&1 >/dev/null
-    }
-
-    # remove old adlist in the db but not in the .psd1 file
-    function Remove-Addlists {
-        param(
-            [Parameter(Mandatory = $true)]
-            [hashtable]$data
-        )
-
-        $existingAdlists = docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "SELECT address FROM adlist;"
-        $existingAdlists = $existingAdlists -split "`n"
-
-        foreach ($adlist in $existingAdlists) {
-            if ($adlist -notin $data['adlists']) {
-                docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "DELETE FROM adlist WHERE address='$adlist';"
-            }
-        }
-    }
-
-    function Set-Interface {
-        param(
-            [Parameter(Mandatory = $true)]
-            [hashtable]$data
-        )
-
-        # w help of https://chatgpt.com/share/676c02af-26f4-8011-8766-8374c08aeb23
-        $command = $command = @"
-if [[ -n "$($data['interface'])" ]]; then
-    if grep -q "^PIHOLE_INTERFACE=" /etc/pihole/setupVars.conf; then
-        sed -i "s/^PIHOLE_INTERFACE=.*/PIHOLE_INTERFACE=$($data['interface'])/" /etc/pihole/setupVars.conf
-    else
-        echo "PIHOLE_INTERFACE=$($data['interface'])" >> /etc/pihole/setupVars.conf
-    fi
-fi
-
-if [[ -n "$($data['listen'])" ]]; then
-    if grep -q "^DNSMASQ_LISTENING=" /etc/pihole/setupVars.conf; then
-        sed -i "s/^DNSMASQ_LISTENING=.*/DNSMASQ_LISTENING=$($data['listen'])/" /etc/pihole/setupVars.conf
-    else
-        echo "DNSMASQ_LISTENING=$($data['listen'])" >> /etc/pihole/setupVars.conf
-    fi
-fi
-"@
-
         docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
     }
 
@@ -486,14 +385,79 @@ fi
         throw "Get-Error updating Pi-hole configuration: $_"
     }
     
-    Remove-Old-DnsConfiguration -data $data -nr $nr
-    Set-DNSSECConfiguration -data $data
+    # remove all dns with a nr higher than $nr aka outdated upstream DNS servers
+    # with help of https://chatgpt.com/share/676050bc-c4bc-8011-aeec-5efcce256287
+    do {
+        [string]$command = "sed -i '/^PIHOLE_DNS_$nr=/d' /etc/pihole/setupVars.conf"
+        [string]$output = docker exec "$($data['stackName'])_pihole" /bin/bash -c "grep '^PIHOLE_DNS_$nr=' /etc/pihole/setupVars.conf"
 
-    Remove-Addlists -data $data
-    Set-Addlists -data $data
+        if ($output) {
+            docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
+            $nr++
+        }
+    } while ($output)
+    # endregion
 
-    Set-Interface -data $data
+    #region dnssec
+    $dnssecValue = if ($data['DNSSECEnabled']) { 'true' } else { 'false' }
+
+    # w help of https://chatgpt.com/share/676ad29c-8da4-8011-bb80-e9c2b8ed9019
+    $command = @"
+if grep -q '^DNSSEC=' /etc/pihole/setupVars.conf; then
+    sed -i 's/^DNSSEC=.*/DNSSEC=$dnssecValue/' /etc/pihole/setupVars.conf
+else
+    echo 'DNSSEC=$dnssecValue' >> /etc/pihole/setupVars.conf
+fi
+"@
+    docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
+    #endregion
+
+    #region adlist
+    # remove deprecated adlists
+    $existingAdlists = docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "SELECT address FROM adlist;"
+    $existingAdlists = $existingAdlists -split "`n"
+
+    foreach ($adlist in $existingAdlists) {
+        if ($adlist -notin $data['adlists']) {
+            docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "DELETE FROM adlist WHERE address='$adlist';"
+        }
+    }
+    # add new ones
+    foreach ($adlist in $data['adlists']) {
+        $command = @"
+INSERT OR IGNORE INTO adlist (address, enabled, date_added, date_modified, comment, date_updated, number, invalid_domains, status)
+VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'now') as int), 'Added via Pi-DNStack', NULL, 0, 0, 0);
+"@
+        docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "$command"
+
+    }
+    docker exec "$($data['stackName'])_pihole" pihole updateGravity 2>&1 >/dev/null
+    #endregion
+
+    #region set pihole interface
+    # w help of https://chatgpt.com/share/676c02af-26f4-8011-8766-8374c08aeb23
+    $command = $command = @"
+if [[ -n "$($data['interface'])" ]]; then
+    if grep -q "^PIHOLE_INTERFACE=" /etc/pihole/setupVars.conf; then
+        sed -i "s/^PIHOLE_INTERFACE=.*/PIHOLE_INTERFACE=$($data['interface'])/" /etc/pihole/setupVars.conf
+    else
+        echo "PIHOLE_INTERFACE=$($data['interface'])" >> /etc/pihole/setupVars.conf
+    fi
+fi
+
+if [[ -n "$($data['listen'])" ]]; then
+    if grep -q "^DNSMASQ_LISTENING=" /etc/pihole/setupVars.conf; then
+        sed -i "s/^DNSMASQ_LISTENING=.*/DNSMASQ_LISTENING=$($data['listen'])/" /etc/pihole/setupVars.conf
+    else
+        echo "DNSMASQ_LISTENING=$($data['listen'])" >> /etc/pihole/setupVars.conf
+    fi
+fi
+"@
+
+    docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
+    #endregion
 }
+
 function Get-FunctionDefinitions {
     # store the functions in variables to send them to the remote host
     # based on https://stackoverflow.com/questions/11367367/how-do-i-include-a-locally-defined-function-when-using-powershells-invoke-comma#:~:text=%24fooDef%20%3D%20%22function%20foo%20%7B%20%24%7Bfunction%3Afoo%7D%20%7D%22%0A%0AInvoke%2DCommand%20%2DArgumentList%20%24fooDef%20%2DComputerName%20someserver.example.com%20%2DScriptBlock%20%7B%0A%20%20%20%20Param(%20%24fooDef%20)%0A%0A%20%20%20%20.%20(%5BScriptBlock%5D%3A%3ACreate(%24fooDef))%0A%0A%20%20%20%20Write%2DHost%20%22You%20can%20call%20the%20function%20as%20often%20as%20you%20like%3A%22%0A%20%20%20%20foo%20%22Bye%22%0A%20%20%20%20foo%20%22Adieu!%22%0A%7D
