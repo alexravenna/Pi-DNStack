@@ -56,47 +56,90 @@ $functionsDefinitions = Get-FunctionDefinitions -functions $functions
 
 # deploy the stack on each host
 # deploying itself could be done trough ansible, but we will use PowerShell to make further changes
+$serverDeploymentJobs = @()
 foreach ($server in $servers) {
-    # make an ssh connection to the remote host
-    [string]$hostname, $username = $server -split ','
-    $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
-    
-    # deploy the stack on the remote host
-    Invoke-Command -Session $session -ScriptBlock {
-        param([Parameter(Mandatory = $true)]        
+    $serverDeploymentJobs += Start-ThreadJob -ScriptBlock {
+        param([Parameter(Mandatory = $true)]
+            [string]$server,
+            [Parameter(Mandatory = $true)]
             [hashtable]$data,
             [Parameter(Mandatory = $true)]
-            [array]$functionDefinitions)
-        # recreate the functions on the remote host
-        foreach ($functionDef in $functionDefinitions) {
-            . ([ScriptBlock]::Create($functionDef))
-        }
+            [array]$functionsDefinitions)
 
-        # remove unbound/cloudflared containers if they are disabled
-        Remove-OldContainers -data $data
-
-        # all deployments are declarative
-        Deploy-Pihole -data $data
-        
-        if ($data['unboundEnabled']) {
-            Deploy-Unbound -data $data
-        }
-        else {
-            Write-Host "Skipping Unbound deployment..."
-        }
-        
-        if ($data['cloudflaredEnabled']) {
-            Deploy-Cloudflared -data $data
-        }
-        else {
-            Write-Host "Skipping Cloudflared deployment..."
-        }
-
-        Set-PiholeConfiguration -data $data
-
-        Write-Host "Stack deployed successfully on $hostname" -ForegroundColor Green
-    } -ArgumentList $data, $functionsDefinitions
+        # make an ssh connection to the remote host
+        [string]$hostname, $username = $server -split ','
+        $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
     
+        # deploy the stack on the remote host
+        Invoke-Command -Session $session -ScriptBlock {
+            param([Parameter(Mandatory = $true)]        
+                [hashtable]$data,
+                [Parameter(Mandatory = $true)]
+                [array]$functionDefinitions)
+
+            # recreate the functions on the remote host, this can not be multi-threaded due to pwsh scoping see https://stackoverflow.com/questions/77900019/piping-to-where-object-and-foreach-object-not-working-in-module-delayed-loaded-i/77903771#77903771 unless doing dirty hacks
+            $functionDefinitions | ForEach-Object {
+                . ([ScriptBlock]::Create($_))
+            }
+
+            # get the body of the function to recreate it in the thread
+            # see https://stackoverflow.com/questions/75609709/start-threadjob-is-not-detecting-my-variables-i-pass-to-it for passing variables to the thread
+            $deployContainerAst = ${function:Deploy-Container}.Ast.Body
+            $deployPiholeAst = ${function:Deploy-Pihole}.Ast.Body
+            $getContainerConfigAst = ${function:Get-CurrentContainerConfig}.Ast.Body
+            $configDifferenceAst = ${function:ConfigDifferent}.Ast.Body
+            $deployUnboundAst = ${function:Deploy-Unbound}.Ast.Body
+            $deployCloudflaredAst = ${function:Deploy-Cloudflared}.Ast.Body
+            @(  # remove unbound/cloudflared containers if they are disabled
+                Start-ThreadJob ${function:Remove-OldContainers} -ArgumentList $data
+                # all deployments are declarative
+                Start-ThreadJob -ScriptBlock {
+                    param($data, $deployContainerAst, $getContainerConfigAst, $configDifferenceAst, $deployPiholeAst)
+                    ${function:Deploy-Container} = $deployContainerAst.GetScriptBlock()
+                    ${function:Get-CurrentContainerConfig} = $getContainerConfigAst.GetScriptBlock()
+                    ${function:ConfigDifferent} = $configDifferenceAst.GetScriptBlock()
+                    & $deployPiholeAst.GetScriptBlock() -data $data
+                } -ArgumentList  $data, $deployContainerAst, $getContainerConfigAst, $configDifferenceAst, $deployPiholeAst
+                Start-ThreadJob -ScriptBlock {
+                    param($data, $deployContainerAst, $getContainerConfigAst, $configDifferenceAst, $deployUnboundAst)
+                    if ($data['unboundEnabled']) {
+                        ${function:Deploy-Container} = $deployContainerAst.GetScriptBlock()
+                        ${function:Get-CurrentContainerConfig} = $getContainerConfigAst.GetScriptBlock()
+                        ${function:ConfigDifferent} = $configDifferenceAst.GetScriptBlock()
+                        & $deployUnboundAst.GetScriptBlock() -data $data
+                    }
+                    else {
+                        Write-Host "Skipping Unbound deployment..."
+                    }
+                } -ArgumentList $data, $deployContainerAst, $getContainerConfigAst, $configDifferenceAst, $deployUnboundAst
+                Start-ThreadJob -ScriptBlock {
+                    param($data, $deployContainerAst, $getContainerConfigAst, $configDifferenceAst, $deployCloudflaredAst)
+                    if ($data['cloudflaredEnabled']) {
+                        ${function:Deploy-Container} = $deployContainerAst.GetScriptBlock()
+                        ${function:Get-CurrentContainerConfig} = $getContainerConfigAst.GetScriptBlock()
+                        ${function:ConfigDifferent} = $configDifferenceAst.GetScriptBlock()
+                        & $deployCloudflaredAst.GetScriptBlock() -data $data
+                    }
+                    else {
+                        Write-Host "Skipping Cloudflared deployment..."
+                    }
+                } -ArgumentList $data, $deployContainerAst, $getContainerConfigAst, $configDifferenceAst, $deployCloudflaredAst
+            )  | Wait-Job | Receive-Job | Remove-Job
+
+            Set-PiholeConfiguration -data $data
+
+        } -ArgumentList $data, $functionsDefinitions
+    
+        Write-Host "Stack deployed on $hostname"
+        # cleanup
+        Remove-PSSession -Session $session
+    } -ArgumentList $server, $data, $functionsDefinitions
+}
+
+$serverDeploymentJobs | ForEach-Object {
+    $job = Wait-Job $_
+    # cath the output of the remote host and print it
+    $job.Information | ForEach-Object { Write-Host $_ }
     # cleanup
-    Remove-PSSession -Session $session
+    Remove-Job $_
 }
