@@ -432,17 +432,21 @@ VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'n
         )
 
         # w help of https://chatgpt.com/share/676c02af-26f4-8011-8766-8374c08aeb23
-        $command = @"
-if grep -q "^PIHOLE_INTERFACE=" /etc/pihole/setupVars.conf; then
-    sed -i "s/^PIHOLE_INTERFACE=.*/PIHOLE_INTERFACE=$($data['interface'])/" /etc/pihole/setupVars.conf
-else
-    echo "PIHOLE_INTERFACE=$($data['interface'])" >> /etc/pihole/setupVars.conf
+        $command = $command = @"
+if [[ -n "$($data['interface'])" ]]; then
+    if grep -q "^PIHOLE_INTERFACE=" /etc/pihole/setupVars.conf; then
+        sed -i "s/^PIHOLE_INTERFACE=.*/PIHOLE_INTERFACE=$($data['interface'])/" /etc/pihole/setupVars.conf
+    else
+        echo "PIHOLE_INTERFACE=$($data['interface'])" >> /etc/pihole/setupVars.conf
+    fi
 fi
 
-if grep -q "^DNSMASQ_LISTENING=" /etc/pihole/setupVars.conf; then
-    sed -i "s/^DNSMASQ_LISTENING=.*/DNSMASQ_LISTENING=$($data['listen'])/" /etc/pihole/setupVars.conf
-else
-    echo "DNSMASQ_LISTENING=$($data['listen'])" >> /etc/pihole/setupVars.conf
+if [[ -n "$($data['listen'])" ]]; then
+    if grep -q "^DNSMASQ_LISTENING=" /etc/pihole/setupVars.conf; then
+        sed -i "s/^DNSMASQ_LISTENING=.*/DNSMASQ_LISTENING=$($data['listen'])/" /etc/pihole/setupVars.conf
+    else
+        echo "DNSMASQ_LISTENING=$($data['listen'])" >> /etc/pihole/setupVars.conf
+    fi
 fi
 "@
 
