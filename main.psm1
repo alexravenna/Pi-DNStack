@@ -251,7 +251,7 @@ function Deploy-Container {
         $command += " -v $volume"
     }
 
-    $command += " $flags $image $extra"
+    $command += " $flags $image $extra >/dev/null"
 
     Invoke-Expression $command
 }
@@ -291,7 +291,8 @@ function Deploy-Unbound {
         -ports @("$($data['unboundPort']):53") `
         -volumes $data['unboundVolumes'] `
         -flags $data['unboundFlags']
-}
+}  
+
 function Deploy-Cloudflared {
     param(
         [Parameter(Mandatory = $true)]
@@ -306,6 +307,8 @@ function Deploy-Cloudflared {
         -flags $data['cloudflaredFlags'] `
         -extra "proxy-dns --port 5053 --address 0.0.0.0"
 }
+
+# some confs are also doable with the docker env variables but w this system we don't need to restart the container + it could be reused outside of docker
 function Set-PiholeConfiguration {
     param(
         [Parameter(Mandatory = $true)]
@@ -422,6 +425,30 @@ VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'n
         }
     }
 
+    function Set-Interface {
+        param(
+            [Parameter(Mandatory = $true)]
+            [hashtable]$data
+        )
+
+        # w help of https://chatgpt.com/share/676c02af-26f4-8011-8766-8374c08aeb23
+        $command = @"
+if grep -q "^PIHOLE_INTERFACE=" /etc/pihole/setupVars.conf; then
+    sed -i "s/^PIHOLE_INTERFACE=.*/PIHOLE_INTERFACE=$($data['interface'])/" /etc/pihole/setupVars.conf
+else
+    echo "PIHOLE_INTERFACE=$($data['interface'])" >> /etc/pihole/setupVars.conf
+fi
+
+if grep -q "^DNSMASQ_LISTENING=" /etc/pihole/setupVars.conf; then
+    sed -i "s/^DNSMASQ_LISTENING=.*/DNSMASQ_LISTENING=$($data['listen'])/" /etc/pihole/setupVars.conf
+else
+    echo "DNSMASQ_LISTENING=$($data['listen'])" >> /etc/pihole/setupVars.conf
+fi
+"@
+
+        docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
+    }
+
     # get ips of upstream DNS servers as pihole needs ip addresses and not docker hostnames
     try {
         if ($data['unboundEnabled']) {
@@ -460,6 +487,8 @@ VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'n
 
     Remove-Addlists -data $data
     Set-Addlists -data $data
+
+    Set-Interface -data $data
 }
 function Get-FunctionDefinitions {
     # store the functions in variables to send them to the remote host

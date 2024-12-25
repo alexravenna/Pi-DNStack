@@ -45,6 +45,9 @@
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
         "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
         "https://v.firebog.net/hosts/static/w3kbl.txt")
+    listen            = "local"
+    # interface to listen on when using the bind or single interface
+    interface         = "eth0"
     
     
     # ! change the password !

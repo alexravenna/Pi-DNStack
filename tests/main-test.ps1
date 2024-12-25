@@ -122,6 +122,20 @@ Describe "Docker Container Tests" {
             }
             $result | Should -Match "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
         }
+
+        It "Should ensure interface is set to eth0" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+            }
+            $result | Should -Match "PIHOLE_INTERFACE=eth0"
+        }
+
+        It "Should ensure pihole listens on local" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+            }
+            $result | Should -Match "DNSMASQ_LISTENING=local"
+        }
     }
 
     Context "Unbound Disabled" {
@@ -281,6 +295,20 @@ Describe "Docker Container Tests" {
             }
             $result | Should -Match "https://test.com"
             $result | Should -Not -Match "https://v.firebog.net/hosts/static/w3kbl.txt"
+        }
+
+        It "Should ensure interface is set to eth1" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+            }
+            $result | Should -Match "PIHOLE_INTERFACE=eth1"
+        }
+
+        It "Should ensure pihole listens on all" {
+            [string]$result = Invoke-Command -Session $session -ScriptBlock {
+                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+            }
+            $result | Should -Match "DNSMASQ_LISTENING=all"
         }
     }
 
