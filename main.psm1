@@ -18,51 +18,87 @@ function Invoke-CommandWithCheck {
         throw "Error executing command: `"$Command`" Error: `"$output`""
     }
 }
+
 function Install-Ansible {
     # see https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html
-    if (Get-Command dnf -ErrorAction SilentlyContinue) {
-        # rhel using dnf
-        Write-Host "Installing Ansible on RHEL-based system..."
-        Invoke-CommandWithCheck "sudo dnf install -y ansible"
-    }
-    elseif (Get-Command apt -ErrorAction SilentlyContinue) {
-        # debian/ubuntu using apt
-        Write-Host "Installing Ansible on Debian-based system..."
-        try {
-            Invoke-CommandWithCheck "sudo apt update"
-            Invoke-CommandWithCheck "sudo apt install -y software-properties-common"
-            Invoke-CommandWithCheck "sudo add-apt-repository --yes --update ppa:ansible/ansible"
-            Invoke-CommandWithCheck "sudo apt install -y ansible"
-        }
-        catch {
-            throw "Error installing Ansible with apt."
-        }
-    }
-    elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
-        # arch using pacman
-        Write-Host "Installing Ansible on Arch-based system..."
-        try {
-            Invoke-CommandWithCheck "sudo pacman -Sy ansible"
-        }
-        catch {
-            throw "Error installing Ansible with pacman."
-        }
-    }
-    elseif ($IsWindows) {
-        throw "Windows not supported. Please use WSL."
-    }
-    else {
-        throw "Unsupported Linux distribution. Please install Ansible manually."
-    }
-
-    # verify installation
     if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
-        throw "Ansible installation failed. Please install Ansible manually."
+        Write-Host "Ansible is not installed. Installing Ansible..."
+        if (Get-Command dnf -ErrorAction SilentlyContinue) {
+            # rhel using dnf
+            Write-Host "Installing Ansible on RHEL-based system..."
+            Invoke-CommandWithCheck "sudo dnf install -y ansible"
+        }
+        elseif (Get-Command apt -ErrorAction SilentlyContinue) {
+            # debian/ubuntu using apt
+            Write-Host "Installing Ansible on Debian-based system..."
+            try {
+                Invoke-CommandWithCheck "sudo apt update"
+                Invoke-CommandWithCheck "sudo apt install -y software-properties-common"
+                Invoke-CommandWithCheck "sudo add-apt-repository --yes --update ppa:ansible/ansible"
+                Invoke-CommandWithCheck "sudo apt install -y ansible"
+            }
+            catch {
+                throw "Error installing Ansible with apt."
+            }
+        }
+        elseif (Get-Command pacman -ErrorAction SilentlyContinue) {
+            # arch using pacman
+            Write-Host "Installing Ansible on Arch-based system..."
+            try {
+                Invoke-CommandWithCheck "sudo pacman -Sy ansible"
+            }
+            catch {
+                throw "Error installing Ansible with pacman."
+            }
+        }
+        elseif ($IsWindows) {
+            throw "Windows not supported. Please use WSL."
+        }
+        else {
+            throw "Unsupported Linux distribution. Please install Ansible manually."
+        }
+
+        # verify installation
+        if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
+            throw "Ansible installation failed. Please install Ansible manually."
+        }
+        else {
+            Write-Host "Ansible installed successfully." -ForegroundColor Green
+        }
     }
     else {
-        Write-Host "Ansible installed successfully." -ForegroundColor Green
+        Write-Host "Ansible is already installed." -ForegroundColor Green
     }
 }
+
+function Install-DependenciesRemotely { 
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TempPath,
+        [Parameter(Mandatory = $true)]
+        [string]$InventoryPath,
+        [Parameter(Mandatory = $true)]
+        [string]$become
+    )
+
+    # temp folder to store hosts information for pwsh remoting
+    New-Item -Path $TempPath -ItemType Directory -Force
+    # install pwsh, docker on the remote host and get hosts information
+    Write-Host "Install dependencies on the remote host..."
+    [string]$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
+    try {
+        Invoke-CommandWithCheck $command
+    }
+    catch {
+        if ($_.Exception.Message -match "Incorrect sudo password") {
+            throw "Error: Incorrect sudo password"
+        }
+        else {
+            throw $($_.Exception.Message)
+        }
+    }
+}
+
 function Get-Data {
     param(
         [Parameter(Mandatory = $true)]

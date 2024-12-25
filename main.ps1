@@ -28,33 +28,16 @@ param(
 
 Import-Module ./main.psm1
 
+# get the data from the .psd1 file
+[hashtable]$data = Get-Data -ConfigPath $ConfigPath
+
 # install ansible locally
-if (-Not (Get-Command ansible -ErrorAction SilentlyContinue)) {
-    Write-Host "Ansible is not installed. Installing Ansible..."
-    Install-Ansible
-}
-else {
-    Write-Host "Ansible is already installed." -ForegroundColor Green
-}
+Install-Ansible
 
-# temp folder to store hosts information for pwsh remoting
-New-Item -Path $TempPath -ItemType Directory -Force
-# install pwsh, docker on the remote host and get hosts information
-Write-Host "Install dependencies on the remote host..."
-[string]$command = "ansible-playbook -i $InventoryPath ./ansible/master.yml --$become"
-try {
-    Invoke-CommandWithCheck $command
-}
-catch {
-    if ($_.Exception.Message -match "Incorrect sudo password") {
-        throw "Error: Incorrect sudo password"
-    }
-    else {
-        throw $($_.Exception.Message)
-    }
-}
+# install docker and pwsh on the remote host
+Install-DependenciesRemotely -TempPath $TempPath -InventoryPath $InventoryPath -become $become
 
-# get host information from ansible
+# get host information from ansible (outputted during remote dependencies installation)
 [Array]$servers = Get-Content -Path "$TempPath/host_info.csv"
 # cleanup
 Remove-Item -Path $TempPath -Recurse -Force
@@ -78,9 +61,6 @@ foreach ($server in $servers) {
     [string]$hostname, $username = $server -split ','
     $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
     
-    # get the data from the .psd1 file
-    [hashtable]$data = Get-Data -ConfigPath $ConfigPath
-    
     # deploy the stack on the remote host
     Invoke-Command -Session $session -ScriptBlock {
         param([Parameter(Mandatory = $true)]        
@@ -92,7 +72,7 @@ foreach ($server in $servers) {
             . ([ScriptBlock]::Create($functionDef))
         }
 
-        # remove unbound/cloudflared containers if they are not enabled
+        # remove unbound/cloudflared containers if they are disabled
         Remove-OldContainers -data $data
 
         # all deployments are declarative
@@ -114,7 +94,7 @@ foreach ($server in $servers) {
 
         Set-PiholeConfiguration -data $data
 
-        Write-Host "Stack deployed successfully." -ForegroundColor Green
+        Write-Host "Stack deployed successfully on $hostname" -ForegroundColor Green
     } -ArgumentList $data, $functionsDefinitions
     
     # cleanup
