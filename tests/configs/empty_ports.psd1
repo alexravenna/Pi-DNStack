@@ -52,7 +52,7 @@
     
     # ! change the password !
     # this is the password to access the pihole web ui
-    piholePassword     = "admin"
+    piholePassword     = "CI-test"
     # list of extra DNS servers to use, default is empty
     # exemple: @("8.8.8.8", "1.1.1.1")
     extraDNS           = @()

@@ -297,9 +297,6 @@ function Deploy-Pihole {
         [hashtable]$data)
 
     [string]$password = $data['piholePassword']
-    if ($password -eq "admin") {
-        Write-Host "Warning: The default password is used." -ForegroundColor Red
-    }
 
     Deploy-Container -name "$($data['stackName'])_pihole" `
         -image "pihole/pihole" `

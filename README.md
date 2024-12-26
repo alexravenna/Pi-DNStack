@@ -33,11 +33,11 @@ Example inventory.ini:
 Modify `main.psd1` as needed (change at least `piholePassword`)
 
 ```bash
-nano main.psd1
+cp main.psd1.example main.psd1 && nano main.psd1
 ```
 
 Run the script
 
 ```bash
-pwsh main.ps1
+pwsh ./main.ps1 -ConfigPath ./main.psd1
 ```

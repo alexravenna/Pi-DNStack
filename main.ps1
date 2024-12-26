@@ -1,11 +1,81 @@
 param(
-    [Parameter(Mandatory = $false)]
+    [Parameter(Mandatory = $true)]
     [ValidateScript({
-            # with help of qwen to use system.io.path
             $fullPath = [System.IO.Path]::GetFullPath($_)
-            [System.IO.File]::Exists($fullPath) -and [System.IO.Directory]::Exists([System.IO.Path]::GetDirectoryName($fullPath))
+        
+            # with help of qwen to use system.io.path
+            if (![System.IO.File]::Exists($fullPath)) {
+                throw "The specified file path '$fullPath' does not exist."
+            }
+
+            $config = Import-PowerShellDataFile -Path $fullPath
+
+            if ($config.piholePassword -eq "admin") {
+                throw "The default password 'admin' is not allowed. Please change the password in the configuration file."
+            }
+
+            $validRestartPolicies = @("no", "always", "unless-stopped", "on-failure")
+            if ($config.restartPolicy -notin $validRestartPolicies) {
+                throw "The 'restartPolicy' in the configuration file is invalid. Accepted values are: $($validRestartPolicies -join ', ')."
+            }
+
+            $validContainerNetwork = @("bridge", "host", "none")
+            if ($config.containerNetwork -notin $validContainerNetwork) {
+                throw "The 'containerNetwork' in the configuration file is invalid. Accepted values are: $($validContainerNetwork -join ', ')."
+            }
+
+            $validListenValues = @("local", "all", "bind", "single", "")
+            if ($config.listen -notin $validListenValues) {
+                throw "The 'listen' in the configuration file is invalid. Accepted values are: $($validListenValues -join ', ')."
+            }
+
+            if ($config.piholeUiPort -ne "" -and (-not [int]::TryParse($config.piholeUiPort, [ref]$null) -or [int]$config.piholeUiPort -lt 1 -or [int]$config.piholeUiPort -gt 65535)) {
+                throw "The 'piholeUiPort' in the configuration file is invalid. Accepted values are between 1 and 65535 or empty."
+            }
+
+            if ($config.piholeDnsPort -ne "" -and (-not [int]::TryParse($config.piholeDnsPort, [ref]$null) -or [int]$config.piholeDnsPort -lt 1 -or [int]$config.piholeDnsPort -gt 65535)) {
+                throw "The 'piholeDnsPort' in the configuration file is invalid. Accepted values are between 1 and 65535 or empty."
+            }
+
+            if ($config.cloudflaredPort -ne "" -and (-not [int]::TryParse($config.cloudflaredPort, [ref]$null) -or [int]$config.cloudflaredPort -lt 1 -or [int]$config.cloudflaredPort -gt 65535)) {
+                throw "The 'cloudflaredPort' in the configuration file is invalid. Accepted values are between 1 and 65535 or empty."
+            }
+
+            if ($config.unboundPort -ne "" -and (-not [int]::TryParse($config.unboundPort, [ref]$null) -or [int]$config.unboundPort -lt 1 -or [int]$config.unboundPort -gt 65535)) {
+                throw "The 'unboundPort' in the configuration file is invalid. Accepted values are between 1 and 65535 or empty."
+            }
+
+            if ($config.DNSSECEnabled -notin @($true, $false)) {
+                throw "The 'DNSSECEnabled' in the configuration file is invalid. Accepted values are: $true, $false."
+            }
+            if ($config.cloudflaredEnabled -notin @($true, $false)) {
+                throw "The 'cloudflaredEnabled' in the configuration file is invalid. Accepted values are: $true, $false."
+            }
+            if ($config.unboundEnabled -notin @($true, $false)) {
+                throw "The 'unboundEnabled' in the configuration file is invalid. Accepted values are: $true, $false."
+            }
+
+            if ($config.adlists -isnot [array]) {
+                throw "The 'adlists' in the configuration file is invalid. It should be an array of strings."
+            }
+
+            foreach ($dns in $config.extraDNS) {
+                if (-not [System.Net.IPAddress]::TryParse($dns, [ref]$null)) {
+                    throw "The 'extraDNS' value '$dns' is not a valid IP address."
+                }
+            }
+
+            # w help of copilot
+            foreach ($volume in $config.piholeVolumes) {
+                $volume = $volume -replace " ", ""
+                if ($volume -notmatch "^/[^/]+(/[^/]+)*$") {
+                    throw "The 'piholeVolumes' value '$volume' is not a valid volume path."
+                }
+            }
+
+            return $true
         })]
-    [string]$ConfigPath = "./main.psd1",
+    [string]$ConfigPath,
 
     [Parameter(Mandatory = $false)]
     [ValidateScript({
@@ -141,5 +211,5 @@ $serverDeploymentJobs | ForEach-Object {
     # cath the output of the remote host and print it
     $job.Information | ForEach-Object { Write-Host $_ }
     # cleanup
-    Remove-Job $_
+    Remove-Job $job
 }

@@ -1,4 +1,5 @@
-# simulate a psd1 file without changes, port is changed because I activly use it on the test machine
+# to edit the configuration, remove uncomment the lines you want to change and edit the values as needed
+
 @{
     # docker restart policy for the whole stack
     # see https://docs.docker.com/engine/containers/start-containers-automatically/#use-a-restart-policy
@@ -15,7 +16,11 @@
     piholeUiPort       = "80"
     # external dns port
     piholeDnsPort      = "53"
+    # enable or disable DDNS see 
+    # see https://docs.pi-hole.net/guides/misc/tor/dnssec/
     DNSSECEnabled      = $true
+    # list of adlists (list of domains to block)
+    # good source for adlists: https://firebog.net also check google, reddit and similar
     adlists            = @("https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
         "https://adaway.org/hosts.txt",
         "https://v.firebog.net/hosts/AdguardDNS.txt",
@@ -46,14 +51,17 @@
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
         "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
         "https://v.firebog.net/hosts/static/w3kbl.txt")
-    listen            = "local"
-    # interface to listen on when using the bind or single interface
-    interface         = "eth0"
+    # see https://docs.pi-hole.net/ftldns/interfaces/
+    # possible values: local all bind single (or let it empty for no modification)
+    listen             = ""
+    # interface to listen on when using the bind or single interface (let it empty for no modification)
+    interface          = ""
     
+
     
     # ! change the password !
     # this is the password to access the pihole web ui
-    piholePassword     = "CI-test"
+    piholePassword     = "admin"
     # list of extra DNS servers to use, default is empty
     # exemple: @("8.8.8.8", "1.1.1.1")
     extraDNS           = @()
@@ -66,7 +74,7 @@
     # image used for arm devices like raspberry pi's
     unboundArmImage    = "mvance/unbound-rpi"
     # external port, not necessary if you wont use unbound outside this stack
-    unboundPort        = "54"
+    unboundPort        = ""
 
     # if you want to use cloudflared as upstream DNS server
     cloudflaredEnabled = $true
@@ -78,7 +86,7 @@
     # volumes to mount for the pihole container
     piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
 
-    # extra docker flags to pass to all the containers
+    # extra docker flags to pass to all the containers, may not work with declarative as we don't have a way to check this
     # see https://docs.docker.com/reference/cli/docker/container/exec/
     # exemple: "--cap-add=NET_ADMIN"
     commonFlags        = ""

@@ -325,6 +325,13 @@ Describe "Docker Container Tests" {
         }
     }
 
+    Context "Password not changed" {
+        It "Should throw an error if the password is not changed" {
+            pwsh -File $scriptPath -ConfigPath "$configDir/password_not_changed.psd1" -InventoryPath $InventoryPath -become $become 2>&1
+            $LastExitCode | Should -Not -Be 0
+        }
+    }
+
     Context "Empty Ports" {
         BeforeAll {
             # run the main script

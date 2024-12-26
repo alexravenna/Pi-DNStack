@@ -45,14 +45,14 @@
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
         "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
         "https://v.firebog.net/hosts/static/w3kbl.txt")
-    listen            = ""
+    listen             = ""
     # interface to listen on when using the bind or single interface
-    interface         = ""
+    interface          = ""
     
     
     # ! change the password !
     # this is the password to access the pihole web ui
-    piholePassword     = "admin"
+    piholePassword     = "CI-test"
     # list of extra DNS servers to use, default is empty
     # exemple: @("8.8.8.8", "1.1.1.1")
     extraDNS           = @()
