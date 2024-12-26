@@ -317,26 +317,14 @@ Describe "Docker Container Tests" {
             # run the main script
             pwsh -File $scriptPath -ConfigPath "$configDir/host_network.psd1" -InventoryPath $InventoryPath -become $become
         }
+
         It "Should ensure the container network is set to 'host'" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{.HostConfig.NetworkMode}}'
             }
             $result | Should -Match "host"
         }
-    }
 
-    Context "Password not changed" {
-        It "Should throw an error if the password is not changed" {
-            pwsh -File $scriptPath -ConfigPath "$configDir/password_not_changed.psd1" -InventoryPath $InventoryPath -become $become 2>&1
-            $LastExitCode | Should -Not -Be 0
-        }
-    }
-
-    Context "Empty Ports" {
-        BeforeAll {
-            # run the main script
-            pwsh -File $scriptPath -ConfigPath "$configDir/empty_ports.psd1" -InventoryPath $InventoryPath -become $become
-        }
         It "Should ensure the pihole container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
@@ -357,10 +345,17 @@ Describe "Docker Container Tests" {
             }
             $result | Should -BeNullOrEmpty
         }
+    }
+
+    Context "Password not changed" {
+        It "Should throw an error if the password is not changed" {
+            pwsh -File $scriptPath -ConfigPath "$configDir/password_not_changed.psd1" -InventoryPath $InventoryPath -become $become 2>&1
+            $LastExitCode | Should -Not -Be 0
+        }
 
         # remove the containers after the last context
         AfterAll {
-            CleanUpContainers -session $session "$configDir/empty_ports.psd1"
+            CleanUpContainers -session $session "$configDir/password_not_changed.psd1"
         }
     }
 }
