@@ -1,5 +1,3 @@
-# to edit the configuration, remove uncomment the lines you want to change and edit the values as needed
-
 @{
     # docker restart policy for the whole stack
     # see https://docs.docker.com/engine/containers/start-containers-automatically/#use-a-restart-policy

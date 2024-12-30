@@ -233,8 +233,6 @@ function Deploy-Container {
         [string]$name,
         [Parameter(Mandatory = $true)]
         [string]$image,
-        [Parameter(Mandatory = $true)]
-        [bool]$forceRedeploy,
         [Parameter(Mandatory = $false)]
         [string]$network,
         [Parameter(Mandatory = $false)]
@@ -260,8 +258,8 @@ function Deploy-Container {
         Write-Host "Deploying $name..." 
     }
     # checks if there are configuration differences between the current and desired state
-    elseif ($forceRedeploy -or (ConfigDifferent -CurrentConfig $currentConfig -image $image -ports $ports -volumes $volumes -envs $envs -restartPolicy $restartPolicy -containerNetwork $network)) {
-        Write-Host "Container $name exists but configuration differs or forceRedeploy is set to true. Redeploying..."
+    elseif (ConfigDifferent -CurrentConfig $currentConfig -image $image -ports $ports -volumes $volumes -envs $envs -restartPolicy $restartPolicy -containerNetwork $network) {
+        Write-Host "Container $name exists but configuration differs. Replacing container..."
         docker rm -f $name
     }
     else {
@@ -302,7 +300,6 @@ function Deploy-Pihole {
 
     Deploy-Container -name "$($data['stackName'])_pihole" `
         -image "pihole/pihole" `
-        -forceRedeploy $data['forceRedeploy'] `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
         -ports @(
@@ -322,7 +319,6 @@ function Deploy-Unbound {
 
     Deploy-Container -name "$($data['stackName'])_unbound" `
         -image $image `
-        -forceRedeploy $data['forceRedeploy'] `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
         -ports @("$($data['unboundPort']):53") `
@@ -337,7 +333,6 @@ function Deploy-Cloudflared {
 
     Deploy-Container -name "$($data['stackName'])_cloudflared" `
         -image "cloudflare/cloudflared" `
-        -forceRedeploy $data['forceRedeploy'] `
         -network $data['containerNetwork'] `
         -restartPolicy $data['restartPolicy'] `
         -ports @("$($data['cloudflaredPort']):5053") `
