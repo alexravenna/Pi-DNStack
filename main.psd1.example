@@ -1,33 +1,92 @@
 @{
-    # docker restart policy for the whole stack
-    # see https://docs.docker.com/engine/containers/start-containers-automatically/#use-a-restart-policy
-    restartPolicy      = "unless-stopped"
-    # prefix added to all the containers, when executing the script we will only change and deploy containers with this prefix
+    #region Global Stack Configuration
+    # Container stack global settings that affect all services
+    
+    # Prefix for all container names in this stack. Only containers with this prefix will be managed.
     stackName          = "auto_deployed"
-    # network to use for the containers
-    # see https://docs.docker.com/engine/network/
+    
+    # Container restart policy.
+    # For more details, visit: https://docs.docker.com/engine/containers/start-containers-automatically/#use-a-restart-policy
+    # Options:
+    # - "no": Never restart
+    # - "always": Always restart
+    # - "unless-stopped": Restart unless manually stopped
+    # - "on-failure": Restart only on failure
+    restartPolicy      = "unless-stopped"
+    
+    # Network configuration for container communication
+    # For more details, visit: https://docs.docker.com/network/
+    # Default "bridge" works for most setups. Other options:
+    # - "host": Use host network (not recommended for security)
+    # - "none": No networking
+    # - "<custom-network>": Your custom docker network name
     containerNetwork   = "bridge"
+    
+    # Additional docker flags applied to all containers
+    # Example: "--cap-add=NET_ADMIN" for network capabilities
+    commonFlags        = ""
+    
+    # Force redeployment of containers even without config changes
+    # Useful when modifying non declarative settings (e.g., commonFlags)
+    forceRedeploy      = $false
+    #endregion
 
-    # pihole docker image
+    #region Pi-hole Configuration
+    # Primary DNS server and ad-blocking service settings
+
+    # container image
     piholeImage        = "pihole/pihole:latest"
-    # external web ui port (you can then access the pihole web ui at http://localhost/admin/login.php:port)
+    
+    # Ports must be between 1-65535 or empty
+    # Example: piholeUiPort = "8080"
+    # Pi-hole web interface port (optional)
     piholeUiPort       = "80"
-    # external dns port
+    # External port for Pi-hole DNS access (optional)
     piholeDnsPort      = "53"
-    # enable or disable DDNS see 
-    # see https://docs.pi-hole.net/guides/misc/tor/dnssec/
-    DNSSECEnabled      = $true
-    # ! change the password !
-    # this is the password to access the pihole web ui
+    
+    # Pi-hole web interface password
+    # !IMPORTANT! Change this to a secure password
+    # Example: piholePassword = "MySecurePass123!"
     piholePassword     = "admin"
-    # volumes to mount for the pihole container
+    
+    # DNSSEC provides authentication and integrity to DNS responses
+    # For more details, visit: https://docs.pi-hole.net/guides/misc/tor/dnssec/
+    # Recommended to keep enabled for security
+    DNSSECEnabled      = $true
+    
+    # Persistent storage for Pi-hole
+    # Format: @("host-path:/container-path", ...)
     piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
-    # list of extra DNS servers to use, default is empty
-    # exemple: @("8.8.8.8", "1.1.1.1")
+    
+    # Additional upstream DNS servers
+    # Format: @("primary.dns.ip", "secondary.dns.ip", ...) or @() to only use unbound/cloudflared
     extraDNS           = @()
-    # list of adlists (list of domains to block)
-    # good source for adlists: https://firebog.net also check google, reddit and similar
-    adlists            = @("https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+    
+    # Network interface configuration
+    # For more details, visit: https://docs.pi-hole.net/ftldns/interfaces/
+    # Options for 'listen':
+    # - "": Default/Do not change
+    # - "local": Respond to queries up to 1 hop away
+    # - "all": Listen on all interfaces (not recommended for security)
+    # - "bind": Bind to specific interface
+    # - "single": Respond to queries on a single interface
+    listen             = ""
+    interface          = ""    # Specify interface name when using "bind" or "single", e.g., "eth0"
+    
+    # Container-specific docker flags (like commonFlags but only for Pi-hole)
+    piholeFlags        = ""
+    
+    # List of adlist sources
+    # Each URL provides a list of domains to block and pihole will periodically fetch and update them
+    # Good sources to find more lists: https://firebog.net/
+    # Lists include:
+    # - General ads and trackers
+    # - Privacy threats
+    # - Malware domains
+    # - Phishing sites
+    # - Cryptocurrency miners
+    adlists            = @(
+        "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
         "https://adaway.org/hosts.txt",
         "https://v.firebog.net/hosts/AdguardDNS.txt",
         "https://v.firebog.net/hosts/Admiral.txt",
@@ -57,39 +116,40 @@
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
         "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
         "https://v.firebog.net/hosts/static/w3kbl.txt")
-    # see https://docs.pi-hole.net/ftldns/interfaces/
-    # possible values: local all bind single (or let it empty for no modification)
-    listen             = ""
-    # interface to listen on when using the bind or single interface (let it empty for no modification)
-    interface          = ""
+    #endregion
+
+    #region Unbound Configuration
+    # Recursive DNS resolver settings
+    # For more details, visit: https://docs.pi-hole.net/guides/dns/unbound/
     
-
-    # if you want to use unbound as upstream DNS server
-    # see https://docs.pi-hole.net/guides/dns/unbound/ for more information about what unbound is
+    # Enable/disable Unbound DNS resolver
     unboundEnabled     = $true
-    # unbound docker image
-    unboundImage       = "mvance/unbound:latest"
-    # image used for arm devices like raspberry pi's
-    unboundArmImage    = "mvance/unbound-rpi"
-    # external port, not necessary if you wont use unbound outside this stack
+    
+    # Container images (default unbound image works only for x86/64 systems)
+    unboundImage       = "mvance/unbound:latest"     # For x86/64 systems
+    unboundArmImage    = "mvance/unbound-rpi"        # For ARM systems (e.g., Raspberry Pi)
+    
+    # External port for direct Unbound access (optional)
     unboundPort        = ""
-
-    # if you want to use cloudflared as upstream DNS server
-    cloudflaredEnabled = $true
-    # see https://docs.pi-hole.net/guides/dns/cloudflared/ for more information about what cloudflared is
-    cloudflaredImage   = "cloudflare/cloudflared:latest"
-    # external port, not necessary if you wont use cloudflared outside this stack
-    cloudflaredPort    = ""
-
-    # extra docker flags to pass to all the containers, may not work with declarative as we don't have a way to check this
-    # see https://docs.docker.com/reference/cli/docker/container/exec/
-    # exemple: "--cap-add=NET_ADMIN"
-    commonFlags        = ""
-    # extra docker flags to pass to a specific container
-    piholeFlags        = ""
+    
+    # Container-specific docker flags (like commonFlags but only for Unbound)
     unboundFlags       = ""
-    cloudflaredFlags   = ""
+    #endregion
 
-    # force container redeployment even if the declarative deployment don't detect a change in container config (this is usefull when adding for exemple commonFlags which can't be detected if the current container is already running with them)
-    forceRedeploy      = $false 
+    #region Cloudflared Configuration
+    # DNS-over-HTTPS proxy settings
+    # For more details, visit: https://docs.docker.com/reference/cli/docker/container/exec/
+    
+    # Enable/disable Cloudflared DoH proxy
+    cloudflaredEnabled = $true
+    
+    # Container image
+    cloudflaredImage   = "cloudflare/cloudflared:latest"
+    
+    # External port for direct Cloudflared access (optional)
+    cloudflaredPort    = ""
+    
+    # Container-specific docker flags (like commonFlags but only for Cloudflared)
+    cloudflaredFlags   = ""
+    #endregion
 }

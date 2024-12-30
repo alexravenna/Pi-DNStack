@@ -1,15 +1,15 @@
-# this test script is ment to be launched from the root directory trough CI/CD
+# This test script is ment to be launched from the root directory trough CI/CD
 
 param(
     [string]$password,
     [string]$configDir = "./tests/configs",
     [string]$scriptPath = "./main.ps1",
     [string]$InventoryPath = "./tests/inventory.ini",
-    # become sudo for ansible through GitHub secrets
+    # Become sudo for ansible through GitHub secrets
     [string]$become = "extra-vars 'ansible_become_password=$password'"
 )
 
-# removes all containers with the stack name
+# Removes all containers with the stack name
 function CleanUpContainers {
     param(
         $session,
@@ -32,7 +32,7 @@ function CleanUpContainers {
     } -ArgumentList $stackName
 }
 
-# get host and username from inventory file
+# Get host and username from inventory file
 [string[]]$servers = Get-Content $InventoryPath
 [string]$server = $servers[-1]
 [string]$hostname, [string]$username = $server -split ' '
@@ -41,7 +41,7 @@ $username = $username -replace "ansible_user=", ""
 $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
 
 
-# pester tests
+#region Pester tests
 Describe "Docker Container Tests" {
     Context "Default Configuration" {
         BeforeAll {
@@ -359,6 +359,7 @@ Describe "Docker Container Tests" {
         }
     }
 }
+#endregion
 
 # cleanup
 Remove-PSSession $session
