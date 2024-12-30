@@ -11,7 +11,7 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 ## Features
 
 -   Automated Deployment
--   Declarative Configuration
+-   Declarative Configuration: Compares your .psd1 with the current state and only applies necessary changes
 -   Multi-host deployment support
 -   Automatic dependency installation
 
@@ -73,4 +73,5 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
     ```
 
 5. **Enjoy!**
+
    After deployment, access the Pi-hole web interface at: `http://<server-ip>:<port>/admin/login.php` and enjoy your new DNS management stack!

@@ -327,6 +327,11 @@ function Deploy-Cloudflared {
         [Parameter(Mandatory = $true)]
         [hashtable]$data)
 
+    $extra = "proxy-dns --port 5053 --address 0.0.0.0"
+    if (-not $data['cloudflaredUpstream'] -eq "") {
+        $extra += " --upstream $data['cloudflaredUpstream']"
+    }
+    
     Deploy-Container -name "$($data['stackName'])_cloudflared" `
         -image "cloudflare/cloudflared" `
         -network $data['containerNetwork'] `
@@ -334,7 +339,7 @@ function Deploy-Cloudflared {
         -ports @("$($data['cloudflaredPort']):5053") `
         -volumes $data['cloudflaredVolumes'] `
         -flags $data['cloudflaredFlags'] `
-        -extra "proxy-dns --port 5053 --address 0.0.0.0"
+        -extra $extra
 }
 
 <#
