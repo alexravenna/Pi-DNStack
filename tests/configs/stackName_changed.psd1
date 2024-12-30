@@ -85,4 +85,6 @@
     piholeFlags        = ""
     unboundFlags       = ""
     cloudflaredFlags   = ""
+    # force container redeployment even if the declarative deployment don't detect a change in container config (this is usefull when adding for exemple commonFlags which can't be detected if the current container is already running with them)
+    forceRedeploy      = $false 
 }

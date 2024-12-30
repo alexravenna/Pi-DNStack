@@ -46,9 +46,9 @@
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
         "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
         "https://v.firebog.net/hosts/static/w3kbl.txt")
-    listen            = "local"
+    listen             = "local"
     # interface to listen on when using the bind or single interface
-    interface         = "eth0"
+    interface          = "eth0"
     
     
     # ! change the password !
@@ -86,4 +86,6 @@
     piholeFlags        = ""
     unboundFlags       = ""
     cloudflaredFlags   = ""
+    # force container redeployment even if the declarative deployment don't detect a change in container config (this is usefull when adding for exemple commonFlags which can't be detected if the current container is already running with them)
+    forceRedeploy      = $false 
 }

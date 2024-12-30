@@ -19,6 +19,14 @@
     # enable or disable DDNS see 
     # see https://docs.pi-hole.net/guides/misc/tor/dnssec/
     DNSSECEnabled      = $true
+    # ! change the password !
+    # this is the password to access the pihole web ui
+    piholePassword     = "admin"
+    # volumes to mount for the pihole container
+    piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
+    # list of extra DNS servers to use, default is empty
+    # exemple: @("8.8.8.8", "1.1.1.1")
+    extraDNS           = @()
     # list of adlists (list of domains to block)
     # good source for adlists: https://firebog.net also check google, reddit and similar
     adlists            = @("https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
@@ -58,14 +66,6 @@
     interface          = ""
     
 
-    
-    # ! change the password !
-    # this is the password to access the pihole web ui
-    piholePassword     = "admin"
-    # list of extra DNS servers to use, default is empty
-    # exemple: @("8.8.8.8", "1.1.1.1")
-    extraDNS           = @()
-
     # if you want to use unbound as upstream DNS server
     # see https://docs.pi-hole.net/guides/dns/unbound/ for more information about what unbound is
     unboundEnabled     = $true
@@ -83,9 +83,6 @@
     # external port, not necessary if you wont use cloudflared outside this stack
     cloudflaredPort    = ""
 
-    # volumes to mount for the pihole container
-    piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
-
     # extra docker flags to pass to all the containers, may not work with declarative as we don't have a way to check this
     # see https://docs.docker.com/reference/cli/docker/container/exec/
     # exemple: "--cap-add=NET_ADMIN"
@@ -94,4 +91,7 @@
     piholeFlags        = ""
     unboundFlags       = ""
     cloudflaredFlags   = ""
+
+    # force container redeployment even if the declarative deployment don't detect a change in container config (this is usefull when adding for exemple commonFlags which can't be detected if the current container is already running with them)
+    forceRedeploy      = $false 
 }

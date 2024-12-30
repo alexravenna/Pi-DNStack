@@ -45,9 +45,9 @@
         "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
         "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
         "https://test.com")
-    listen            = "all"
+    listen             = "all"
     # interface to listen on when using the bind or single interface
-    interface         = "eth1"
+    interface          = "eth1"
     
     # ! change the password !
     # this is the password to access the pihole web ui
@@ -84,4 +84,6 @@
     piholeFlags        = ""
     unboundFlags       = ""
     cloudflaredFlags   = ""
+    # force container redeployment even if the declarative deployment don't detect a change in container config (this is usefull when adding for exemple commonFlags which can't be detected if the current container is already running with them)
+    forceRedeploy      = $false 
 }
