@@ -1,11 +1,15 @@
 # This test script is ment to be launched from the root directory trough CI/CD
 
 param(
+    [Parameter(Mandatory = $true, HelpMessage = "Sudo password for Ansible privilege escalation")]
     [string]$password,
+    [Parameter(HelpMessage = "Directory containing test configuration files")]
     [string]$configDir = "./tests/configs",
+    [Parameter(HelpMessage = "Path to the main script to be tested")]
     [string]$scriptPath = "./main.ps1",
+    [Parameter(HelpMessage = "Path to the Ansible inventory file")]
     [string]$InventoryPath = "./tests/inventory.ini",
-    # Become sudo for ansible through GitHub secrets
+    [Parameter(HelpMessage = "Ansible privilege escalation method using GitHub secrets")]
     [string]$become = "extra-vars 'ansible_become_password=$password'"
 )
 

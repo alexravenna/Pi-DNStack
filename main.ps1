@@ -1,6 +1,7 @@
 param(
     # Path to the configuration file
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true,
+        HelpMessage = "Path to the .psd1 configuration file containing stack deployment settings")]
     [ValidateScript({
             $fullPath = [System.IO.Path]::GetFullPath($_)
         
@@ -81,7 +82,8 @@ param(
     [string]$ConfigPath,
 
     # Path to the Ansible inventory file
-    [Parameter(Mandatory = $false)]
+    [Parameter(Mandatory = $false,
+        HelpMessage = "Path to the Ansible inventory file listing target hosts")]
     [ValidateScript({
             $fullPath = [System.IO.Path]::GetFullPath($_)
             [System.IO.File]::Exists($fullPath) -and [System.IO.Directory]::Exists([System.IO.Path]::GetDirectoryName($fullPath))
@@ -90,7 +92,8 @@ param(
 
     # Ansible privilege escalation method
     # For more information, see: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_privilege_escalation.html
-    [Parameter(Mandatory = $false)]
+    [Parameter(Mandatory = $false,
+        HelpMessage = "Ansible privilege escalation method (e.g., 'ask-become-pass' or 'become-method=sudo')")]
     [string]$become = "ask-become-pass"
 )
 
