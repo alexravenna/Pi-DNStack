@@ -486,6 +486,8 @@ fi
     #endregion
 
     #region adlist
+    # update gravity in case the db is not yet created
+    docker exec "$($data['stackName'])_pihole" pihole updateGravity 2>&1 >/dev/null
     # remove deprecated adlists
     $existingAdlists = docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "SELECT address FROM adlist;"
     $existingAdlists = $existingAdlists -split "`n"
