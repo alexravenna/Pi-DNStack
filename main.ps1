@@ -77,6 +77,18 @@ param(
                 }
             }
 
+            # Validate DHCP settings (with help of copilot)
+            if ($config.configureDHCP) {
+                if ($config.dhcpServer -isnot [array]) {
+                    throw "The 'dhcpServer' in the configuration file is invalid. It should be an array of strings."
+                }
+                foreach ($server in $config.dhcpServer) {
+                    if ($server -isnot [string] -or [string]::IsNullOrWhiteSpace($server)) {
+                        throw "Each 'dhcpServer' value in the configuration file should be a non-empty string."
+                    }
+                }
+            }
+
             return $true
         })]
     [string]$ConfigPath,
@@ -120,7 +132,8 @@ $functions = @(
     "Invoke-CommandWithCheck",
     "ConfigDifferent",
     "Get-CurrentContainerConfig",
-    "Remove-OldContainers"
+    "Remove-OldContainers",
+    "Get-DnsIp"
 )
 $functionsDefinitions = Get-FunctionDefinitions -functions $functions
 
@@ -135,7 +148,9 @@ foreach ($server in $servers) {
             [Parameter(Mandatory = $true)]
             [hashtable]$data,
             [Parameter(Mandatory = $true)]
-            [array]$functionsDefinitions
+            [array]$functionsDefinitions,
+            [Parameter(Mandatory = $true)]
+            [string]$firstServer
         )
 
         # SSH connection
@@ -148,7 +163,9 @@ foreach ($server in $servers) {
                 [Parameter(Mandatory = $true)]        
                 [hashtable]$data,
                 [Parameter(Mandatory = $true)]
-                [array]$functionDefinitions
+                [array]$functionDefinitions,
+                [Parameter(Mandatory = $true)]
+                [string]$firstServer
             )
 
             # Initialize functions in remote session
@@ -211,11 +228,19 @@ foreach ($server in $servers) {
 
             # Configure Pi-hole
             Set-PiholeConfiguration -data $data
-        } -ArgumentList $data, $functionsDefinitions
-    
+
+
+            # If it's the first server we deploy it to, get its DNS IP for dhcp settings
+            if ($data['configureDHCP'] -and ($using:server -eq $firstServer)) {
+                return Get-DnsIp -data $data
+            }
+
+        } -ArgumentList $data, $functionsDefinitions, $firstServer
+
         Write-Host "Stack deployed on $hostname"
+
         Remove-PSSession -Session $session
-    } -ArgumentList $server, $data, $functionsDefinitions
+    } -ArgumentList $server, $data, $functionsDefinitions, $servers[0]
 }
 # endregion
 
@@ -223,5 +248,9 @@ foreach ($server in $servers) {
 $serverDeploymentJobs | ForEach-Object {
     $job = Wait-Job $_
     $job.Information | ForEach-Object { Write-Host $_ }
+    # Update DHCP settings to use Pi-hole as DNS server
+    if ($data['configureDHCP']) {
+        Update-DHCPSettings -data $data -dnsServer $job.Output[0]
+    }
     Remove-Job $job
 }

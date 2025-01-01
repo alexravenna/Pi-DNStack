@@ -634,5 +634,92 @@ function Install-DependenciesRemotely {
 }
 #endregion
 
+#region Client Configuration
+<#
+.SYNOPSIS
+    Gets the Pi-Hol IP address.
+.DESCRIPTION
+    Retrieves the DNS IP address based on the configuration.
+    If the Pi-hole DNS port is published outside the container, the host IP is used.
+    Otherwise, the container IP is used.
+.PARAMETER data
+    Configuration hashtable containing Pi-hole settings.
+.EXAMPLE
+    Get-DnsIp -data $config
+#>
+function Get-DnsIp {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$data
+    )
+
+    Write-Host "Getting DNS IP..."
+
+    # Check if piholeDnsPort is published outside the container
+    if ($data['piholeDnsPort'] -ne "") {
+        # Use host ip
+        return Invoke-CommandWithCheck "hostname -I | awk '{print `$1}'"
+
+    }
+    else {
+        # Use container ip, not recommended as it will not be accessible from outside
+        return Invoke-CommandWithCheck "docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $($data['stackName'])_pihole"
+    }
+}
+
+<#
+.SYNOPSIS
+    Updates DHCP settings to use Pi-DNStack.
+.DESCRIPTION
+    Configures windows DHCP server to use Pi-hole as the primary DNS server.
+.PARAMETER data
+    Configuration hashtable containing DHCP settings.
+.PARAMETER dnsServer
+    DNS server IP address.
+.EXAMPLE
+    Update-DHCPSettings -data $config -dnsServer "127.0.0.1"
+#>
+function Update-DHCPSettings {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$data,
+        [Parameter(Mandatory = $true)]
+        [string]$dnsServer
+    )
+
+    Write-Host "Configuring DHCP to use Pi-DNStack"
+
+    if (-not $dnsServer) {
+        throw "DNS server not found."
+    }
+
+    foreach ($server in $data['dhcpServer']) {
+        foreach ($username in $data['dhcpUsers']) {
+            # Create a SSH (because we connect from a linux host) PowerShell session to the DHCP server
+            try {
+                $session = New-PSSession -HostName $server -UserName $username -SSHTransport -ErrorAction Stop
+            }
+            catch {
+                throw "Failed to create SSH session, please check the DHCP server credentials."
+            }
+
+            # Update DHCP server
+            # no try catch as it doesn't work properly on non windows hosts in this situation: https://github.com/PowerShell/PowerShell/issues/16382 https://stackoverflow.com/questions/78763548/powershell-is-unable-to-load-shared-library-libmi-for-error-message-on-alpine
+            Invoke-Command -Session $session -ScriptBlock {
+                param(
+                    [Parameter(Mandatory = $true)]
+                    $dnsServer)
+
+                Set-DhcpServerv4OptionValue -DnsServer $dnsServer
+                Write-Host "Updated DHCP server to use Pi-DNStack DNS server: $dnsServer"
+            } -ArgumentList $dnsServer
+
+            Remove-PSSession -Session $session
+
+        }
+    }
+}
+#endregion
+
 # Export all functions
 Export-ModuleMember -Function *

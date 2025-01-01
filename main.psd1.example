@@ -152,4 +152,29 @@
     # Container-specific docker flags (like commonFlags but only for Cloudflared)
     cloudflaredFlags   = ""
     #endregion
+
+    #region DHCP Configuration
+    # Automatically configure a Windows DHCP server to use Pi-hole as the primary DNS server
+    # Important considerations:
+    # 1. The Windows server must have the DHCP role installed and configured
+    # 2. PowerShell remoting must be enabled on the Windows server
+    # 3. Network connectivity must exist between DHCP server and Pi-hole
+    # 4. Appropriate firewall rules must be configured:
+    #    - DNS traffic (TCP/UDP 53)
+    #    - PowerShell remoting (TCP 5985/5986)
+    # 5. When using bridge network mode, ensure piholeDnsPort is set to "53"
+    # 6. Set appropriate Pi-hole listen configuration (e.g., listen = "all")
+    
+    # Set to $true to enable DHCP configuration or $false to disable
+    configureDHCP      = $false
+
+    # The hostname or IP address of the Windows DHCP server
+    # Must be reachable from the management workstation
+    # Example: dhcpServer = @("192.168.1.8")
+    dhcpServer         = @()
+    # The username to connect to the DHCP server
+    # Example: dhcpUser = @("Administrator")
+    dhcpUsers          = @("Administrator")
+
+    #endregion
 }

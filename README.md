@@ -29,7 +29,7 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 
 -   **Management Workstation**:
     -   PowerShell 7+
-    -   SSH access to target server(s) through public key authentication
+    -   SSH access to the target server(s) through public key authentication
     -   Supported platforms:
         -   Linux (Debian, RedHat, or Arch based) (Physical or Virtual)
         -   Windows users can use [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
@@ -51,6 +51,7 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
     ```
 
     Example `inventory.ini`:
+
     ```ini
     192.168.1.10 ansible_user=ansible
     ```
@@ -74,4 +75,31 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 
 5. **Enjoy!**
 
-   After deployment, access the Pi-hole web interface at: `http://<server-ip>:<port>/admin/login.php` and enjoy your new DNS management stack!
+    After deployment, access the Pi-hole web interface at: `http://<server-ip>:<port>/admin/login.php` and enjoy your new DNS management stack!
+
+## Windows DHCP Configuration
+
+Pi-DNStack can automatically configure a Windows DHCP server to use Pi-hole. This feature requires:
+
+### Prerequisites
+
+-   Windows Server with DHCP role installed
+-   [Powershell SSH remoting access](https://learn.microsoft.com/th-th/powershell/scripting/security/remoting/ssh-remoting-in-powershell?view=powershell-7.4) to the target server(s)
+-   Network connectivity between:
+    -   Windows DHCP server and Pi-hole server
+    -   Management workstation and Windows DHCP server
+
+### Network Considerations
+
+1. **Firewall Rules**:
+
+    - Allow DNS traffic (TCP/UDP 53) between DHCP clients and Pi-hole
+    - Allow PowerShell remoting (TCP 5985/5986) from management workstation to DHCP server
+
+2. **Docker Network Mode**:
+
+    - If using `bridge` mode, ensure Pi-hole's DNS port is published (`piholeDnsPort = "53"`)
+    - If using `host` mode (recommended for this feature), ensure the host's firewall allows DNS traffic
+
+3. **Pi-hole Listen Configuration**:
+    - Ensure Pi-hole is configured to listen to the required interfaces.
