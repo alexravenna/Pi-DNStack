@@ -3,7 +3,7 @@
     # Container stack global settings that affect all services
     
     # Prefix for all container names in this stack. Only containers with this prefix will be managed.
-    stackName          = "auto_deployed"
+    stackName          = "Pi-DNStack"
     
     # Container restart policy.
     # For more details, visit: https://docs.docker.com/engine/containers/start-containers-automatically/#use-a-restart-policy
@@ -19,11 +19,11 @@
     # Default "bridge" works for most setups. Other options:
     # - "host": Use host network (not recommended for security)
     # - "none": No networking
-    # - "<custom-network>": Your custom docker network name
-    containerNetwork   = "bridge"
+    containerNetwork   = "host"
     
     # Additional docker flags applied to all containers
     # Example: "--cap-add=NET_ADMIN" for network capabilities
+    # For more details, visit: https://docs.docker.com/reference/cli/docker/container/run/#options
     commonFlags        = ""
     
     # Force redeployment of containers even without config changes
@@ -37,9 +37,8 @@
     # container image
     piholeImage        = "pihole/pihole:latest"
     
-    # Ports must be between 1-65535 or empty
-    # Example: piholeUiPort = "8080"
     # Pi-hole web interface port (optional)
+    # Example: piholeUiPort = "8080"
     piholeUiPort       = "80"
     # External port for Pi-hole DNS access (optional)
     piholeDnsPort      = "53"
@@ -56,10 +55,12 @@
     
     # Persistent storage for Pi-hole
     # Format: @("host-path:/container-path", ...)
+    # Example: piholeVolumes = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
     piholeVolumes      = @("/etc/pihole:/etc/pihole", "/etc-dnsmasq.d:/etc/dnsmasq.d")
     
     # Additional upstream DNS servers
     # Format: @("primary.dns.ip", "secondary.dns.ip", ...) or @() to only use unbound/cloudflared
+    # Example: extraDNS = @("1.1.1.1", "8.8.8.8")
     extraDNS           = @()
     
     # Network interface configuration
@@ -79,7 +80,7 @@
     # List of adlist sources
     # Each URL provides a list of domains to block and pihole will periodically fetch and update them
     # Good sources to find more lists: https://firebog.net/
-    # Lists include:
+    # The default list include:
     # - General ads and trackers
     # - Privacy threats
     # - Malware domains
@@ -159,10 +160,8 @@
     # 1. The Windows server must have the DHCP role installed and configured
     # 2. PowerShell remoting must be enabled on the Windows server
     # 3. Network connectivity must exist between DHCP server and Pi-hole
-    # 4. Appropriate firewall rules must be configured:
-    #    - DNS traffic (TCP/UDP 53)
-    #    - PowerShell remoting (TCP 5985/5986)
-    # 5. When using bridge network mode, ensure piholeDnsPort is set to "53"
+    # 4. Appropriate firewall rules must be configured
+    # 5. When using bridge network mode, ensure piholeDnsPort is set to "53", we recommend using host network mode when using this feature
     # 6. Set appropriate Pi-hole listen configuration (e.g., listen = "all")
     
     # Set to $true to enable DHCP configuration or $false to disable
@@ -170,11 +169,11 @@
 
     # The hostname or IP address of the Windows DHCP server
     # Must be reachable from the management workstation
-    # Example: dhcpServer = @("192.168.1.8")
+    # Example: dhcpServer = @("192.168.124.176")
     dhcpServer         = @()
     # The username to connect to the DHCP server
     # Example: dhcpUser = @("Administrator")
-    dhcpUsers          = @("Administrator")
+    dhcpUsers          = @()
 
     #endregion
 }

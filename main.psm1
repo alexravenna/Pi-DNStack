@@ -68,7 +68,7 @@ function Get-FunctionDefinitions {
 .PARAMETER image, restartPolicy, containerNetwork, ports, volumes, envs
     Desired configuration parameters to compare against.
 .EXAMPLE
-    ConfigDifferent -CurrentConfig $config -image "nginx:latest" -restartPolicy "always"
+    ConfigDifferent -CurrentConfig $config -image "nginx:latest" -restartPolicy "always" -containerNetwork "bridge"
 #>
 function ConfigDifferent {
     param (
@@ -263,7 +263,7 @@ function Deploy-Container {
 .DESCRIPTION
     Specialized deployment function for Pi-hole.
 .PARAMETER data
-    Configuration hashtable containing Pi-hole specific settings.
+    Configuration hashtable including Pi-hole specific settings.
 .EXAMPLE
     Deploy-Pihole -data $config
 #>
@@ -292,7 +292,7 @@ function Deploy-Pihole {
 .DESCRIPTION
     Specialized deployment function for Unbound .
 .PARAMETER data
-    Configuration hashtable containing Unbound specific settings.
+    Configuration hashtable including Unbound specific settings.
 .EXAMPLE
     Deploy-Unbound -data $config
 #>
@@ -318,7 +318,7 @@ function Deploy-Unbound {
 .DESCRIPTION
     Specialized deployment function for Cloudflared.
 .PARAMETER data
-    Configuration hashtable containing Cloudflared specific settings.
+    Configuration hashtable including Cloudflared specific settings.
 .EXAMPLE
     Deploy-Cloudflared -data $config
 #>
@@ -348,7 +348,7 @@ function Deploy-Cloudflared {
 .DESCRIPTION
     Removes Unbound and Cloudflared containers if they are disabled in configuration.
 .PARAMETER data
-    Configuration hashtable containing service enable/disable flags.
+    Configuration hashtable including service enable/disable flags.
 .EXAMPLE
     Remove-OldContainers -data $config
 #>
@@ -378,7 +378,7 @@ function Remove-OldContainers {
 .DESCRIPTION
     Applies Pi-hole configuration including DNS servers, DNSSEC, adlists, and interface settings.
 .PARAMETER data
-    Configuration hashtable containing Pi-hole settings.
+    Configuration hashtable including Pi-hole settings.
 .EXAMPLE
     Set-PiholeConfiguration -data $config
 #>
@@ -643,7 +643,7 @@ function Install-DependenciesRemotely {
     If the Pi-hole DNS port is published outside the container, the host IP is used.
     Otherwise, the container IP is used.
 .PARAMETER data
-    Configuration hashtable containing Pi-hole settings.
+    Configuration hashtable including Pi-hole settings.
 .EXAMPLE
     Get-DnsIp -data $config
 #>
@@ -652,8 +652,6 @@ function Get-DnsIp {
         [Parameter(Mandatory = $true)]
         [hashtable]$data
     )
-
-    Write-Host "Getting DNS IP..."
 
     # Check if piholeDnsPort is published outside the container
     if ($data['piholeDnsPort'] -ne "") {
@@ -673,7 +671,7 @@ function Get-DnsIp {
 .DESCRIPTION
     Configures windows DHCP server to use Pi-hole as the primary DNS server.
 .PARAMETER data
-    Configuration hashtable containing DHCP settings.
+    Configuration hashtable including DHCP settings.
 .PARAMETER dnsServer
     DNS server IP address.
 .EXAMPLE
@@ -687,7 +685,7 @@ function Update-DHCPSettings {
         [string]$dnsServer
     )
 
-    Write-Host "Configuring DHCP to use Pi-DNStack"
+    Write-Host "Configuring DHCP to use Pi-DNStack..."
 
     if (-not $dnsServer) {
         throw "DNS server not found."

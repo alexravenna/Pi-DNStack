@@ -115,7 +115,7 @@ Import-Module ./main.psm1
 # Ensure Ansible is available locally
 Install-Ansible
 
-# Prepare remote hosts with required dependencies (docker, PowerShell)
+# Prepare remote hosts with required dependencies (Docker, PowerShell)
 Install-DependenciesRemotely -TempPath ./temp -InventoryPath $InventoryPath -become $become
 
 # Get host information from Ansible
@@ -155,7 +155,12 @@ foreach ($server in $servers) {
 
         # SSH connection
         [string]$hostname, $username = $server -split ','
-        $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport
+        try {
+            $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport -ErrorAction Stop
+        }
+        catch {
+            throw "Failed to create SSH session, please check the DHCP server credentials."
+        }
     
         # Execute deployment on remote host
         Invoke-Command -Session $session -ScriptBlock {
@@ -228,7 +233,6 @@ foreach ($server in $servers) {
 
             # Configure Pi-hole
             Set-PiholeConfiguration -data $data
-
 
             # If it's the first server we deploy it to, get its DNS IP for dhcp settings
             if ($data['configureDHCP'] -and ($using:server -eq $firstServer)) {

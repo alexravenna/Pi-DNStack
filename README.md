@@ -10,10 +10,11 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 
 ## Features
 
--   Automated Deployment
+-   Automated Preconfigured Deployment
 -   Declarative Configuration: Compares your .psd1 with the current state and only applies necessary changes
 -   Multi-host deployment support
 -   Automatic dependency installation
+-   Optional Windows DHCP configuration
 
 ## Prerequisites
 
@@ -29,9 +30,12 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 
 -   **Management Workstation**:
     -   PowerShell 7+
-    -   SSH access to the target server(s) through public key authentication
+    -   SSH access to the target server(s) through [public key authentication](https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server)
     -   Supported platforms:
-        -   Linux (Debian, RedHat, or Arch based) (Physical or Virtual)
+        -   Linux Workstation (Physical or Virtual)
+            -   Debian-based: use `apt`
+            -   RedHat-based: use `dnf`
+            -   Arch-based: use `pacman`
         -   Windows users can use [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
 
 ## Quick Start
