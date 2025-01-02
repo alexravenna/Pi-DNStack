@@ -175,5 +175,12 @@
     # Example: dhcpUser = @("Administrator")
     dhcpUsers          = @()
 
+    # DHCP Scope ID for specific scope configuration (optional)
+    # Example: dhcpScopeId = "192.168.1.0"
+    dhcpScopeId         = ""
+
+    # DHCP Policy Name for policy-specific configuration (optional)
+    # Example: dhcpPolicyName = "VPN Users"
+    dhcpPolicyName      = ""
     #endregion
 }

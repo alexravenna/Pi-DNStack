@@ -670,6 +670,7 @@ function Get-DnsIp {
     Updates DHCP settings to use Pi-DNStack.
 .DESCRIPTION
     Configures windows DHCP server to use Pi-hole as the primary DNS server.
+    Supports server-wide, scope-specific, and policy-specific configurations.
 .PARAMETER data
     Configuration hashtable including DHCP settings.
 .PARAMETER dnsServer
@@ -691,30 +692,53 @@ function Update-DHCPSettings {
         throw "DNS server not found."
     }
 
-    foreach ($server in $data['dhcpServer']) {
-        foreach ($username in $data['dhcpUsers']) {
-            # Create a SSH (because we connect from a linux host) PowerShell session to the DHCP server
-            try {
-                $session = New-PSSession -HostName $server -UserName $username -SSHTransport -ErrorAction Stop
-            }
-            catch {
-                throw "Failed to create SSH session, please check the DHCP server credentials."
-            }
-
-            # Update DHCP server
-            # no try catch as it doesn't work properly on non windows hosts in this situation: https://github.com/PowerShell/PowerShell/issues/16382 https://stackoverflow.com/questions/78763548/powershell-is-unable-to-load-shared-library-libmi-for-error-message-on-alpine
-            Invoke-Command -Session $session -ScriptBlock {
-                param(
-                    [Parameter(Mandatory = $true)]
-                    $dnsServer)
-
-                Set-DhcpServerv4OptionValue -DnsServer $dnsServer
-                Write-Host "Updated DHCP server to use Pi-DNStack DNS server: $dnsServer"
-            } -ArgumentList $dnsServer
-
-            Remove-PSSession -Session $session
-
+    for ($i = 0; $i -lt $data['dhcpServer'].Length; $i++) {
+        $server = $data['dhcpServer'][$i]
+        $username = $data['dhcpUser'][$i]
+        # Create a SSH (because we connect from a linux host) PowerShell session to the DHCP server
+        try {
+            $session = New-PSSession -HostName $server -UserName $username -SSHTransport -ErrorAction Stop
         }
+        catch {
+            throw "Failed to create SSH session, please check the DHCP server credentials."
+        }
+
+        # Update DHCP server
+        # no try catch as it doesn't work properly on non windows hosts in this situation: https://github.com/PowerShell/PowerShell/issues/16382 https://stackoverflow.com/questions/78763548/powershell-is-unable-to-load-shared-library-libmi-for-error-message-on-alpine
+        Invoke-Command -Session $session -ScriptBlock {
+            param(
+                [Parameter(Mandatory = $true)]
+                [string]$dnsServer,
+                [Parameter(Mandatory = $false)]
+                [string]$scopeId,
+                [Parameter(Mandatory = $false)]
+                [string]$policyName
+            )
+
+            # Configure based on provided parameters
+            if ($scopeId -and $policyName) {
+                # Scope and Policy specific configuration
+                Set-DhcpServerv4OptionValue -ScopeId $scopeId -PolicyName $policyName -DnsServer $dnsServer
+                Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId and policy: $policyName"
+            }
+            elseif ($scopeId) {
+                # Scope specific configuration
+                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer $dnsServer
+                Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId"
+            }
+            elseif ($policyName) {
+                # Policy specific configuration
+                Set-DhcpServerv4OptionValue -PolicyName $policyName -DnsServer $dnsServer
+                Write-Host "Updated DHCP server with DNS server: $dnsServer for policy: $policyName"
+            }
+            else {
+                # Server-wide configuration
+                Set-DhcpServerv4OptionValue -DnsServer $dnsServer
+                Write-Host "Updated DHCP server with DNS server: $dnsServer"
+            }
+        } -ArgumentList $dnsServer, $data['dhcpScopeId'], $data['dhcpPolicyName']
+
+        Remove-PSSession -Session $session
     }
 }
 #endregion

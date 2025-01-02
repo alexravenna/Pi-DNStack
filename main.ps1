@@ -87,6 +87,12 @@ param(
                         throw "Each 'dhcpServer' value in the configuration file should be a non-empty string."
                     }
                 }
+                if ($config.dhcpScopeId -isnot [string]) {
+                    throw "The 'dhcpScopeId' in the configuration file is invalid. It should be a string."
+                }
+                if ($config.dhcpPolicyName -isnot [string]) {
+                    throw "The 'dhcpPolicyName' in the configuration file is invalid. It should be a string."
+                }
             }
 
             return $true
@@ -159,7 +165,7 @@ foreach ($server in $servers) {
             $session = New-PSSession -HostName $hostname -UserName $username -SSHTransport -ErrorAction Stop
         }
         catch {
-            throw "Failed to create SSH session, please check the DHCP server credentials."
+            throw "Failed to create SSH session, please check the credentials and network connectivity."
         }
     
         # Execute deployment on remote host
