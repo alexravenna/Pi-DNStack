@@ -135,7 +135,8 @@ function ConfigDifferent {
         }
     }
     # we don't need to check visa versa as as there is only the pihole password as env variable
-
+    # SSH connection
+    [string]$hostname, $username = $server -split ','
     return $false
 }
 
@@ -212,49 +213,55 @@ function Deploy-Container {
         [string]$extra = ""
     )
     
-    # declarative checks
-    $currentConfig = Get-CurrentContainerConfig -ContainerName $name
-    $envs = @()
-    if ($name -match "pihole") {
-        $envs += "WEBPASSWORD=$($data['piholePassword'])"
-    }
-    # check if the container runs
-    if ($null -eq $currentConfig) {
-        Write-Host "Deploying $name..." 
-    }
-    # checks if there are configuration differences between the current and desired state
-    elseif (ConfigDifferent -CurrentConfig $currentConfig -image $image -ports $ports -volumes $volumes -envs $envs -restartPolicy $restartPolicy -containerNetwork $network) {
-        Write-Host "Container $name exists but configuration differs. Replacing container..."
-        docker rm -f $name
-    }
-    else {
-        Write-Host "Container $name is already deployed with the correct configuration."
-        return
-    }
-
-    [string]$command = "docker run -d --name $name"
-    if ($restartPolicy) { 
-        $command += " --restart $restartPolicy" 
-    }
-    if ($network) { 
-        $command += " --network $network" 
-    }
-
-    foreach ($port in $ports) {
-        # with help of https://chatgpt.com/share/67669ebb-9d50-8011-a317-88c6aa993d1d
-        # if there is an outwards port map it
-        if ($port -match '^\d+:') {
-            $command += " -p $port"
+    try {
+        # declarative checks
+        $currentConfig = Get-CurrentContainerConfig -ContainerName $name
+        $envs = @()
+        if ($name -match "pihole") {
+            $envs += "WEBPASSWORD=$($data['piholePassword'])"
         }
+        # check if the container runs
+        if ($null -eq $currentConfig) {
+            Write-Host "Deploying $name..." 
+        }
+        # checks if there are configuration differences between the current and desired state
+        elseif (ConfigDifferent -CurrentConfig $currentConfig -image $image -ports $ports -volumes $volumes -envs $envs -restartPolicy $restartPolicy -containerNetwork $network) {
+            Write-Host "Container $name exists but configuration differs. Replacing container..."
+            docker rm -f $name
+        }
+        else {
+            Write-Host "Container $name is already deployed with the correct configuration."
+            return
+        }
+
+        [string]$command = "docker run -d --name $name"
+        if ($restartPolicy) { 
+            $command += " --restart $restartPolicy" 
+        }
+        if ($network) { 
+            $command += " --network $network" 
+        }
+
+        foreach ($port in $ports) {
+            # with help of https://chatgpt.com/share/67669ebb-9d50-8011-a317-88c6aa993d1d
+            # if there is an outwards port map it
+            if ($port -match '^\d+:') {
+                $command += " -p $port"
+            }
+        }
+
+        foreach ($volume in $volumes) {
+            $command += " -v $volume"
+        }
+
+        $command += " $flags $image $extra >/dev/null"
+
+        # not Invoke-CommandWithCheck as we don't execute this in the main thread and is not worthit to also reacreate this function
+        Invoke-Expression $command
     }
-
-    foreach ($volume in $volumes) {
-        $command += " -v $volume"
+    catch {
+        throw "Failed to deploy container $name : $_"
     }
-
-    $command += " $flags $image $extra >/dev/null"
-
-    Invoke-Expression $command
 }
 
 <#
@@ -395,10 +402,16 @@ function Set-PiholeConfiguration {
             [string]$port)
         
         # https://stackoverflow.com/questions/17157721/how-to-get-a-docker-containers-ip-address-from-the-host
-        [string]$IP = Invoke-CommandWithCheck "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
-        # inner port so no need to take it from the .psd1 file
-        [string]$Network = "$IP#$port"
-        return $Network
+        try {
+            [string]$IP = Invoke-CommandWithCheck "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
+            if (-not $IP) {
+                throw "Failed to get IP address for container $container"
+            }
+            return "$IP#$port"
+        }
+        catch {
+            throw "Failed to get network settings for $container : $_"
+        }
     }
 
     # region upsteam DNS
@@ -455,7 +468,7 @@ function Set-PiholeConfiguration {
         }
     }
     catch {
-        throw "Get-Error updating Pi-hole configuration: $_"
+        throw "Failed to configure Pi-hole DNS settings: $_"
     }
     
     # remove all dns with a nr higher than $nr aka outdated upstream DNS servers
@@ -700,45 +713,53 @@ function Update-DHCPSettings {
             $session = New-PSSession -HostName $server -UserName $username -SSHTransport -ErrorAction Stop
         }
         catch {
-            throw "Failed to create SSH session, please check the DHCP server credentials."
+            throw "Failed to create SSH session to DHCP server $server : $_"
         }
 
-        # Update DHCP server
-        # no try catch as it doesn't work properly on non windows hosts in this situation: https://github.com/PowerShell/PowerShell/issues/16382 https://stackoverflow.com/questions/78763548/powershell-is-unable-to-load-shared-library-libmi-for-error-message-on-alpine
-        Invoke-Command -Session $session -ScriptBlock {
-            param(
-                [Parameter(Mandatory = $true)]
-                [string]$dnsServer,
-                [Parameter(Mandatory = $false)]
-                [string]$scopeId,
-                [Parameter(Mandatory = $false)]
-                [string]$policyName
-            )
+        # per https://github.com/PowerShell/PowerShell/issues/16382 https://stackoverflow.com/questions/78763548/powershell-is-unable-to-load-shared-library-libmi-for-error-message-on-alpine
+        # try can work but may fail to catch for Set-DhcpServerv4OptionValue
+        try {
+            Invoke-Command -Session $session -ScriptBlock {
+                param(
+                    [Parameter(Mandatory = $true)]
+                    [string]$dnsServer,
+                    [Parameter(Mandatory = $false)]
+                    [string]$scopeId,
+                    [Parameter(Mandatory = $false)]
+                    [string]$policyName
+                )
 
-            # Configure based on provided parameters
-            if ($scopeId -and $policyName) {
-                # Scope and Policy specific configuration
-                Set-DhcpServerv4OptionValue -ScopeId $scopeId -PolicyName $policyName -DnsServer $dnsServer
-                Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId and policy: $policyName"
+                # Configure based on provided parameters
+                if ($scopeId -and $policyName) {
+                    # Scope and Policy specific configuration
+                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -PolicyName $policyName -DnsServer $dnsServer
+                    Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId and policy: $policyName"
+                }
+                elseif ($scopeId) {
+                    # Scope specific configuration
+                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer $dnsServer
+                    Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId"
+                }
+                elseif ($policyName) {
+                    # Policy specific configuration
+                    Set-DhcpServerv4OptionValue -PolicyName $policyName -DnsServer $dnsServer
+                    Write-Host "Updated DHCP server with DNS server: $dnsServer for policy: $policyName"
+                }
+                else {
+                    # Server-wide configuration
+                    Set-DhcpServerv4OptionValue -DnsServer $dnsServer
+                    Write-Host "Updated DHCP server with DNS server: $dnsServer"
+                }
+            } -ArgumentList $dnsServer, $data['dhcpScopeId'], $data['dhcpPolicyName']
+        }
+        catch {
+            throw "Failed to update DHCP settings on server $server : $_"
+        }
+        finally {
+            if ($session) {
+                Remove-PSSession -Session $session
             }
-            elseif ($scopeId) {
-                # Scope specific configuration
-                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer $dnsServer
-                Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId"
-            }
-            elseif ($policyName) {
-                # Policy specific configuration
-                Set-DhcpServerv4OptionValue -PolicyName $policyName -DnsServer $dnsServer
-                Write-Host "Updated DHCP server with DNS server: $dnsServer for policy: $policyName"
-            }
-            else {
-                # Server-wide configuration
-                Set-DhcpServerv4OptionValue -DnsServer $dnsServer
-                Write-Host "Updated DHCP server with DNS server: $dnsServer"
-            }
-        } -ArgumentList $dnsServer, $data['dhcpScopeId'], $data['dhcpPolicyName']
-
-        Remove-PSSession -Session $session
+        }
     }
 }
 #endregion

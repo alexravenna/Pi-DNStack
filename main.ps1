@@ -167,7 +167,7 @@ foreach ($server in $servers) {
         catch {
             throw "Failed to create SSH session, please check the credentials and network connectivity."
         }
-    
+            
         # Execute deployment on remote host
         Invoke-Command -Session $session -ScriptBlock {
             param(
@@ -254,13 +254,29 @@ foreach ($server in $servers) {
 }
 # endregion
 
-# Write job information to console
+# Process job results (and print them)
 $serverDeploymentJobs | ForEach-Object {
     $job = Wait-Job $_
+
     $job.Information | ForEach-Object { Write-Host $_ }
-    # Update DHCP settings to use Pi-hole as DNS server
-    if ($data['configureDHCP']) {
-        Update-DHCPSettings -data $data -dnsServer $job.Output[0]
+
+    if ($job.State -eq "Failed") {
+        Write-Host "Deployment failed" -ForegroundColor Red
+        Write-Host "Error: $($job.Error.Message)" -ForegroundColor Red
     }
+    else {
+        Write-Host "Deployment succeeded" -ForegroundColor Green
+        
+        if ($data['configureDHCP'] -and $job.Output[0]) {
+            try {
+                Update-DHCPSettings -data $data -dnsServer $job.Output[0]
+                Write-Host "DHCP configuration updated successfully" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "DHCP configuration failed: $_" -ForegroundColor Red
+            }
+        }
+    }
+
     Remove-Job $job
 }
