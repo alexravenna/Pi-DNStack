@@ -23,8 +23,8 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 -   **Target Server(s)**:
 
     -   Linux-based operating system
-        -   Debian-based (Ubuntu, Debian, etc.)
-        -   RedHat-based (RHEL, CentOS, Fedora, etc.)
+        -   Debian-based using `apt`
+        -   RedHat-based using `dnf`
         -   Other distributions if dependencies are pre-installed
     -   Sufficient privileges
 
@@ -33,9 +33,9 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
     -   SSH access to the target server(s) through [public key authentication](https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server)
     -   Supported platforms:
         -   Linux Workstation (Physical or Virtual)
-            -   Debian-based: use `apt`
-            -   RedHat-based: use `dnf`
-            -   Arch-based: use `pacman`
+            -   Debian-based: using `apt`
+            -   RedHat-based: using `dnf`
+            -   Arch-based: using `pacman`
         -   Windows users can use [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
 
 ## Quick Start
@@ -95,15 +95,14 @@ Pi-DNStack can automatically configure a Windows DHCP server to use Pi-hole. Thi
 
 ### Network Considerations
 
-1. **Firewall Rules**:
-
-    - Allow DNS traffic (TCP/UDP 53) between DHCP clients and Pi-hole
-    - Allow PowerShell remoting (TCP 5985/5986) from management workstation to DHCP server
-
-2. **Docker Network Mode**:
+1. **Docker Network Mode**:
 
     - If using `bridge` mode, ensure Pi-hole's DNS port is published (`piholeDnsPort = "53"`)
     - If using `host` mode (recommended for this feature), ensure the host's firewall allows DNS traffic
 
-3. **Pi-hole Listen Configuration**:
+2. **Pi-hole Listen Configuration**:
     - Ensure Pi-hole is configured to listen to the required interfaces.
+
+### Configuration
+
+To enable DHCP integration, edit the `#region DHCP Configuration` section in your `main.psd1` file. The configuration file contains detailed comments and examples for all available DHCP options.
