@@ -672,7 +672,7 @@ function Get-DnsIp {
     )
 
     # Check if piholeDnsPort is published outside the container
-    if ($data['piholeDnsPort'] -ne "") {
+    if ($data['containerNetwork'] -eq "host") {
         # Use host ip
         return Invoke-CommandWithCheck "hostname -I | awk '{print `$1}'"
 
@@ -694,14 +694,14 @@ function Get-DnsIp {
 .PARAMETER dnsServer
     DNS server IP address.
 .EXAMPLE
-    Update-DHCPSettings -data $config -dnsServer "127.0.0.1"
+    Update-DHCPSettings -data $config -dnsServer @("127.0.0.1")
 #>
 function Update-DHCPSettings {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$data,
         [Parameter(Mandatory = $true)]
-        [string]$dnsServer
+        [array]$dnsServer
     )
 
     Write-Host "Configuring DHCP to use Pi-DNStack..."
@@ -738,22 +738,22 @@ function Update-DHCPSettings {
                 if ($scopeId -and $policyName) {
                     # Scope and Policy specific configuration
                     Set-DhcpServerv4OptionValue -ScopeId $scopeId -PolicyName $policyName -DnsServer $dnsServer
-                    Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId and policy: $policyName"
+                    Write-Host "Updated DHCP server with DNS servers: $($dnsServer -join ', ') for scope: $scopeId and policy: $policyName"
                 }
                 elseif ($scopeId) {
                     # Scope specific configuration
                     Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer $dnsServer
-                    Write-Host "Updated DHCP server with DNS server: $dnsServer for scope: $scopeId"
+                    Write-Host "Updated DHCP server with DNS servers: $($dnsServer -join ', ') for scope: $scopeId"
                 }
                 elseif ($policyName) {
                     # Policy specific configuration
                     Set-DhcpServerv4OptionValue -PolicyName $policyName -DnsServer $dnsServer
-                    Write-Host "Updated DHCP server with DNS server: $dnsServer for policy: $policyName"
+                    Write-Host "Updated DHCP server with DNS servers: $($dnsServer -join ', ') for policy: $policyName"
                 }
                 else {
                     # Server-wide configuration
                     Set-DhcpServerv4OptionValue -DnsServer $dnsServer
-                    Write-Host "Updated DHCP server with DNS server: $dnsServer"
+                    Write-Host "Updated DHCP server with DNS servers: $($dnsServer -join ', ')"
                 }
             } -ArgumentList $dnsServer, $data['dhcpScopeId'], $data['dhcpPolicyName']
         }

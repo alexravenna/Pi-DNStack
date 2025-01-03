@@ -98,7 +98,7 @@ Pi-DNStack can automatically configure a Windows DHCP server to use Pi-hole. Thi
 1. **Docker Network Mode**:
 
     - If using `bridge` mode, ensure Pi-hole's DNS port is published (`piholeDnsPort = "53"`)
-    - If using `host` mode, ensure the host's firewall allows DNS traffic and unbound is disabled (both containers would use port 53)
+    - If using `host` mode (recomenden when using this feature), ensure the host's firewall allows DNS traffic and unbound is disabled (both containers would use port 53)
 
 2. **Pi-hole Listen Configuration**:
     - Ensure Pi-hole is configured to listen to the required interfaces.

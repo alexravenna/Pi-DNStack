@@ -158,9 +158,7 @@ foreach ($server in $servers) {
             [Parameter(Mandatory = $true)]
             [hashtable]$data,
             [Parameter(Mandatory = $true)]
-            [array]$functionsDefinitions,
-            [Parameter(Mandatory = $true)]
-            [string]$firstServer
+            [array]$functionsDefinitions
         )
 
         # SSH connection
@@ -178,9 +176,7 @@ foreach ($server in $servers) {
                 [Parameter(Mandatory = $true)]        
                 [hashtable]$data,
                 [Parameter(Mandatory = $true)]
-                [array]$functionDefinitions,
-                [Parameter(Mandatory = $true)]
-                [string]$firstServer
+                [array]$functionDefinitions
             )
 
             # Initialize functions in remote session
@@ -244,17 +240,17 @@ foreach ($server in $servers) {
             # Configure Pi-hole
             Set-PiholeConfiguration -data $data
 
-            # If it's the first server we deploy it to, get its DNS IP for dhcp settings
-            if ($data['configureDHCP'] -and ($using:server -eq $firstServer)) {
+            # Get Pi-Hole DNS IP for dhcp settings
+            if ($data['configureDHCP']) {
                 return Get-DnsIp -data $data
             }
 
-        } -ArgumentList $data, $functionsDefinitions, $firstServer
+        } -ArgumentList $data, $functionsDefinitions
 
         Write-Host "Stack deployed on $hostname"
 
         Remove-PSSession -Session $session
-    } -ArgumentList $server, $data, $functionsDefinitions, $servers[0]
+    } -ArgumentList $server, $data, $functionsDefinitions
 }
 # endregion
 
@@ -278,9 +274,9 @@ $serverDeploymentJobs | ForEach-Object {
     else {
         Write-Host "Deployment succeeded" -ForegroundColor Green
         
-        if ($data['configureDHCP'] -and $job.Output[0]) {
+        if ($data['configureDHCP'] -and $job.Output) {
             try {
-                Update-DHCPSettings -data $data -dnsServer $job.Output[0] -ErrorAction Stop
+                Update-DHCPSettings -data $data -dnsServer $job.Output -ErrorAction Stop
                 Write-Host "DHCP configuration updated successfully" -ForegroundColor Green
             }
             catch {
