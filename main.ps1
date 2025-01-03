@@ -29,6 +29,10 @@ param(
             if ($config.containerNetwork -notin $validContainerNetwork) {
                 throw "The 'containerNetwork' in the configuration file is invalid. Accepted values are: $($validContainerNetwork -join ', ')."
             }
+            # When using the host network all ports should be empty
+            if ($config.containerNetwork -eq "host" -and ($config.piholeUiPort -ne "" -or $config.piholeDnsPort -ne "" -or $config.cloudflaredPort -ne "" -or $config.unboundPort -ne "")) {
+                throw "When using the 'host' network configuration, all port values should be empty."
+            }
 
             # Validate DNS listening mode
             $validListenValues = @("local", "all", "bind", "single", "")
@@ -262,14 +266,17 @@ $serverDeploymentJobs | ForEach-Object {
 
     if ($job.State -eq "Failed") {
         Write-Host "Deployment failed" -ForegroundColor Red
-        Write-Host "Error: $($job.Error.Message)" -ForegroundColor Red
+        Write-Host "Errors:" -ForegroundColor Red
+        foreach ($joberror in $job.Error) {
+            Write-Host $joberror -ForegroundColor Red
+        }
     }
     else {
         Write-Host "Deployment succeeded" -ForegroundColor Green
         
         if ($data['configureDHCP'] -and $job.Output[0]) {
             try {
-                Update-DHCPSettings -data $data -dnsServer $job.Output[0]
+                Update-DHCPSettings -data $data -dnsServer $job.Output[0] -ErrorAction Stop
                 Write-Host "DHCP configuration updated successfully" -ForegroundColor Green
             }
             catch {

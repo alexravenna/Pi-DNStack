@@ -38,10 +38,11 @@
     piholeImage        = "pihole/pihole:latest"
     
     # Pi-hole web interface port (optional)
-    # Example: piholeUiPort = "8080"
-    piholeUiPort       = "80"
+    # Example: piholeUiPort = "80"
+    piholeUiPort       = ""
     # External port for Pi-hole DNS access (optional)
-    piholeDnsPort      = "53"
+    # Example: piholeDnsPort = "53"
+    piholeDnsPort      = ""
     
     # Pi-hole web interface password
     # !IMPORTANT! Change this to a secure password
@@ -177,10 +178,10 @@
 
     # DHCP Scope ID for specific scope configuration (optional)
     # Example: dhcpScopeId = "192.168.1.0"
-    dhcpScopeId         = ""
+    dhcpScopeId        = ""
 
     # DHCP Policy Name for policy-specific configuration (optional)
     # Example: dhcpPolicyName = "VPN Users"
-    dhcpPolicyName      = ""
+    dhcpPolicyName     = ""
     #endregion
 }
