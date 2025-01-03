@@ -403,7 +403,12 @@ function Set-PiholeConfiguration {
         
         # https://stackoverflow.com/questions/17157721/how-to-get-a-docker-containers-ip-address-from-the-host
         try {
-            [string]$IP = Invoke-CommandWithCheck "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
+            if ($data['containerNetwork'] -eq "host") {
+                [string]$IP = Invoke-CommandWithCheck "hostname -I | awk '{print `$1}'"
+            }
+            else {
+                [string]$IP = Invoke-CommandWithCheck "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ""$($data['stackName'])_$container"""
+            }
             if (-not $IP) {
                 throw "Failed to get IP address for container $container"
             }

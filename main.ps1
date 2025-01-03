@@ -270,6 +270,10 @@ $serverDeploymentJobs | ForEach-Object {
         foreach ($joberror in $job.Error) {
             Write-Host $joberror -ForegroundColor Red
         }
+        # print thread job error
+        foreach ($joberrror in $job.JobStateInfo.Reason) {
+            Write-Host $joberrror -ForegroundColor Red
+        }
     }
     else {
         Write-Host "Deployment succeeded" -ForegroundColor Green

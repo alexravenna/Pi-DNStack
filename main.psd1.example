@@ -19,7 +19,7 @@
     # Default "bridge" works for most setups. Other options:
     # - "host": Use host network (not recommended for security)
     # - "none": No networking
-    containerNetwork   = "host"
+    containerNetwork   = "bridge"
     
     # Additional docker flags applied to all containers
     # Example: "--cap-add=NET_ADMIN" for network capabilities
@@ -39,10 +39,10 @@
     
     # Pi-hole web interface port (optional)
     # Example: piholeUiPort = "80"
-    piholeUiPort       = ""
+    piholeUiPort       = "80"
     # External port for Pi-hole DNS access (optional)
     # Example: piholeDnsPort = "53"
-    piholeDnsPort      = ""
+    piholeDnsPort      = "53"
     
     # Pi-hole web interface password
     # !IMPORTANT! Change this to a secure password
