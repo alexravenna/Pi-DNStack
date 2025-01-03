@@ -1,6 +1,6 @@
 @{
     restartPolicy      = "unless-stopped"
-    stackName          = "auto_deployed"
+    stackName          = "Pi-DNStack"
     containerNetwork   = "bridge"
     piholeImage        = "pihole/pihole:latest"
     piholeUiPort       = "80"

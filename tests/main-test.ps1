@@ -21,7 +21,7 @@ function CleanUpContainers {
     )
 
     $config = Import-PowerShellDataFile -Path $path
-    [string]$stackName = if ($config.stackName) { $config.stackName } else { 'auto_deployed' }
+    [string]$stackName = if ($config.stackName) { $config.stackName } else { 'Pi-DNStack' }
 
     Invoke-Command -Session $session -ScriptBlock {
         param([string]$stackName)
@@ -55,14 +55,14 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the pihole container is running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_pihole" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_pihole" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the pihole container is bound to port 80 and 53" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -Match "80"
             $result | Should -Match "53"
@@ -70,42 +70,42 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the pihole container has the correct mount for /etc/pihole" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{range .Mounts}}{{.Source}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range .Mounts}}{{.Source}}{{end}}'
             }
             $result | Should -Match "/etc/pihole"
         }
 
         It "Should ensure the restart policy is set to 'unless-stopped'" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{.HostConfig.RestartPolicy.Name}}'
+                docker inspect Pi-DNStack_pihole --format '{{.HostConfig.RestartPolicy.Name}}'
             }
             $result | Should -Match "unless-stopped"
         }
 
         It "Should ensure the container network is set to 'bridge'" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{.HostConfig.NetworkMode}}'
+                docker inspect Pi-DNStack_pihole --format '{{.HostConfig.NetworkMode}}'
             }
             $result | Should -Match "bridge"
         }
 
         It "Should ensure the unbound container is running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_pihole" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_pihole" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the cloudflared container is running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_cloudflared" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_cloudflared" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the pihole container is resolving correctly" {
             [string]$server = Invoke-Command -Session $session -ScriptBlock { 
-                docker inspect auto_deployed_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
             }
             [string]$result = Invoke-Command -Session $session -ScriptBlock { 
                 nslookup google.com $server
@@ -115,28 +115,28 @@ Describe "Docker Container Tests" {
 
         It "Should ensure DNSSEC is enabled" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+                docker exec Pi-DNStack_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "DNSSEC=true"
         }
 
         It "Should ensure the adlists are set correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
+                docker exec Pi-DNStack_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
             }
             $result | Should -Match "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
         }
 
         It "Should ensure interface is set to eth0" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+                docker exec Pi-DNStack_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "PIHOLE_INTERFACE=eth0"
         }
 
         It "Should ensure pihole listens on local" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+                docker exec Pi-DNStack_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "DNSMASQ_LISTENING=local"
         }
@@ -150,28 +150,28 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the unbound container is not running" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_unbound" --format "{{.Names}}" | wc -l
+                docker ps --filter "name=Pi-DNStack_unbound" --format "{{.Names}}" | wc -l
             }
             $result | Should -Be "0"
         }
 
         It "Should ensure the cloudflared container is still running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_cloudflared" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_cloudflared" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the pihole container is still running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_pihole" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_pihole" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the pihole container is resolving correctly" {
             [string]$server = Invoke-Command -Session $session -ScriptBlock { 
-                docker inspect auto_deployed_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
             }
             [string]$result = Invoke-Command -Session $session -ScriptBlock { 
                 nslookup google.com $server
@@ -187,28 +187,28 @@ Describe "Docker Container Tests" {
         }
         It "Should ensure the cloudflared container is not running" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_cloudflared" --format "{{.Names}}" | wc -l
+                docker ps --filter "name=Pi-DNStack_cloudflared" --format "{{.Names}}" | wc -l
             }
             $result | Should -Be "0"
         }
 
         It "Should ensure the unbound container is still running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_unbound" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_unbound" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the pihole container is still running correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker ps --filter "name=auto_deployed_pihole" --format "{{.Names}}"
+                docker ps --filter "name=Pi-DNStack_pihole" --format "{{.Names}}"
             }
             $result | Should -Not -BeNullOrEmpty
         }
 
         It "Should ensure the pihole container is resolving correctly" {
             [string]$server = Invoke-Command -Session $session -ScriptBlock { 
-                docker inspect auto_deployed_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
             }
             [string]$result = Invoke-Command -Session $session -ScriptBlock { 
                 nslookup google.com $server
@@ -244,14 +244,14 @@ Describe "Docker Container Tests" {
         }
         It "Should ensure the restart policy is set to 'always'" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{.HostConfig.RestartPolicy.Name}}'
+                docker inspect Pi-DNStack_pihole --format '{{.HostConfig.RestartPolicy.Name}}'
             }
             $result | Should -Match "always"
         }
 
         It "Should ensure the Pi-hole container is bound to port 8081 and 5356" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -Match "8081"
             $result | Should -Match "5356"
@@ -259,28 +259,28 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the unbound container is bound to port 5353" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -Match "5353"
         }
 
         It "Should ensure the cloudflared container is bound to port 5054" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -Match "5054"
         }
 
         It "Should ensure the Pi-hole password is changed" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{range .Config.Env}}{{println .}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range .Config.Env}}{{println .}}{{end}}'
             }
             $result | Should -Match "WEBPASSWORD=secret"
         }
 
         It "Should ensure volume path is changed" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{range .Mounts}}{{.Source}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range .Mounts}}{{.Source}}{{end}}'
             }
             $result | Should -Match "/etc/test/pihole"
             $result | Should -Match "/etc/test/dnsmasq.d"
@@ -288,14 +288,14 @@ Describe "Docker Container Tests" {
 
         It "Should ensure DNSSEC is disabled" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+                docker exec Pi-DNStack_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "DNSSEC=false"
         }
 
         It "Should ensure the adlists are set correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
+                docker exec Pi-DNStack_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
             }
             $result | Should -Match "https://test.com"
             $result | Should -Not -Match "https://v.firebog.net/hosts/static/w3kbl.txt"
@@ -303,14 +303,14 @@ Describe "Docker Container Tests" {
 
         It "Should ensure interface is set to eth1" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+                docker exec Pi-DNStack_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "PIHOLE_INTERFACE=eth1"
         }
 
         It "Should ensure pihole listens on all" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec auto_deployed_pihole cat /etc/pihole/setupVars.conf
+                docker exec Pi-DNStack_pihole cat /etc/pihole/setupVars.conf
             }
             $result | Should -Match "DNSMASQ_LISTENING=all"
         }
@@ -324,28 +324,28 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the container network is set to 'host'" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{.HostConfig.NetworkMode}}'
+                docker inspect Pi-DNStack_pihole --format '{{.HostConfig.NetworkMode}}'
             }
             $result | Should -Match "host"
         }
 
         It "Should ensure the pihole container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -BeNullOrEmpty
         }
 
         It "Should ensure the unbound container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -BeNullOrEmpty
         }
 
         It "Should ensure the cloudflared container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect auto_deployed_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
+                docker inspect Pi-DNStack_cloudflared --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -BeNullOrEmpty
         }
