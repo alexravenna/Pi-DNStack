@@ -82,7 +82,7 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 
 5. **Enjoy!**
 
-    After deployment, access the Pi-hole web interface at: `http://<server-ip>:<port>/admin/login.php` and enjoy your new DNS management stack!
+    After deployment, access the Pi-hole web interface at: `http://<server-ip>:<port>/admin/login.php`, [configure your clients](https://www.windowscentral.com/how-change-your-pcs-dns-settings-windows-10#:~:text=HOW%20TO%20CHANGE%20DNS%20SETTINGS%20USING%20SETTINGS%20ON%20WINDOWS%2010) to use Pi-DNStack as DNS server and enjoy your new DNS management stack!
 
 ## Windows DHCP Configuration
 
