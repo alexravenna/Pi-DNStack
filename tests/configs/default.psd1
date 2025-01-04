@@ -52,5 +52,6 @@
     piholeFlags        = ""
     unboundFlags       = ""
     cloudflaredFlags   = ""
-    forceRedeploy      = $false 
+    forceRedeploy      = $false
+    logFile            = "~/.pi-dnstack.log"
 }

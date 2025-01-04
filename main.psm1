@@ -1,3 +1,5 @@
+# Disclaimer: most function comments are made with the help of copilot
+
 #region Helper Functions
 <#
 .SYNOPSIS
@@ -366,13 +368,13 @@ function Remove-OldContainers {
     )
 
     if (-Not $data['unboundEnabled']) {
-        Write-Host "Removing old unbound container..."
+        Write-Host "Removing old unbound container if present..."
         # remove the container silently
         docker rm -f "$($data['stackName'])_unbound" 2>&1 >/dev/null
     }
 
     if (-Not $data['cloudflaredEnabled']) {
-        Write-Host "Removing old cloudflared container..."
+        Write-Host "Removing old cloudflared container if present..."
         docker rm -f "$($data['stackName'])_cloudflared" 2>&1 >/dev/null
     }
 }

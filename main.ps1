@@ -119,8 +119,20 @@ param(
     [string]$become = "ask-become-pass"
 )
 
-Import-Module ./main.psm1
 [hashtable]$data = Import-PowerShellDataFile -Path $ConfigPath
+
+# Create log file
+if (-not (Test-Path $data['logFile'])) {
+    $logDir = [System.IO.Path]::GetDirectoryName($data['logFile'])
+    if (-not (Test-Path $logDir)) {
+        New-Item -Path $logDir -ItemType Directory -Force
+    }
+    New-Item -Path $data['logFile'] -ItemType File
+}
+# Start logging
+Start-Transcript -Path $data['logFile'] -Append
+
+Import-Module ./main.psm1
 
 # Ensure Ansible is available locally
 Install-Ansible
@@ -287,3 +299,6 @@ $serverDeploymentJobs | ForEach-Object {
 
     Remove-Job $job
 }
+
+# Stop logging
+Stop-Transcript

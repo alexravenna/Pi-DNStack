@@ -1,4 +1,5 @@
 @{
+    # Disclaimer: most comments are made with the help of copilot
     #region Global Stack Configuration
     # Container stack global settings that affect all services
     
@@ -29,6 +30,9 @@
     # Force redeployment of containers even without config changes
     # Useful when modifying non declarative settings (e.g., commonFlags)
     forceRedeploy      = $false
+
+    # Log file path for stack operations
+    logFile            = "~/.pi-dnstack.log"
     #endregion
 
     #region Pi-hole Configuration

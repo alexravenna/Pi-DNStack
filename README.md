@@ -1,3 +1,5 @@
+<!-- Disclaimer: Readme had been refined by ai -->
+
 # Pi-DNStack
 
 ## Overview
@@ -36,6 +38,7 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
             -   Debian-based: using `apt`
             -   RedHat-based: using `dnf`
             -   Arch-based: using `pacman`
+            -   Other distributions if dependencies are pre-installed
         -   Windows users can use [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
 
 ## Quick Start
@@ -106,3 +109,9 @@ Pi-DNStack can automatically configure a Windows DHCP server to use Pi-hole. Thi
 ### Configuration
 
 To enable DHCP integration, edit the `#region DHCP Configuration` section in your `main.psd1` file. The configuration file contains detailed comments and examples for all available DHCP options.
+
+## Troubleshooting
+
+-   Check the log file at `~/log/pi-dnstack/main.log` for detailed deployment information
+-   Verify network connectivity and port availability on target hosts
+-   For unresolved issues, please check [GitHub Issues](https://github.com/IGLADI/Pi-DNStack/issues)
