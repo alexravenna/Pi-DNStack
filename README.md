@@ -6,9 +6,9 @@
 
 Pi-DNStack is an automated solution for deploying a containerized DNS management stack, including:
 
--   **Pi-hole**: Network-wide ad blocking and DNS management
--   **Unbound**: Recursive DNS resolver
--   **Cloudflared**: DNS-over-HTTPS (DoH) proxy
+-   [**Pi-hole**](https://pi-hole.net): Network-wide ad blocking and DNS management
+-   [**Unbound**](https://docs.pi-hole.net/guides/dns/unbound/): Local recursive DNS resolver
+-   [**Cloudflared**](https://docs.docker.com/reference/cli/docker/container/exec/): DNS-over-HTTPS (DoH) proxy
 
 ## Features
 
