@@ -55,8 +55,8 @@
     
     # DNSSEC provides authentication and integrity to DNS responses
     # For more details, visit: https://docs.pi-hole.net/guides/misc/tor/dnssec/
-    # Recommended to keep enabled for security
-    DNSSECEnabled      = $true
+    # Recommended to enable if not using Unbound/Cloudflared (or any other upstream DNS server that already supports DNSSEC)
+    DNSSECEnabled      = $false
     
     # Persistent storage for Pi-hole
     # Format: @("host-path:/container-path", ...)
