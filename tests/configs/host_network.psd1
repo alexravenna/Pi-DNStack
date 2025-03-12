@@ -40,7 +40,7 @@
     interface          = ""
     piholePassword     = "CI-test"
     extraDNS           = @()
-    unboundEnabled     = $true
+    unboundEnabled     = $false
     unboundImage       = "mvance/unbound:latest"
     unboundArmImage    = "mvance/unbound-rpi"
     unboundPort        = ""

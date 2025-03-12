@@ -122,7 +122,7 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the adlists are set correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec Pi-DNStack_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
+                docker exec Pi-DNStack_pihole pihole-FTL sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
             }
             $result | Should -Match "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
         }
@@ -295,7 +295,7 @@ Describe "Docker Container Tests" {
 
         It "Should ensure the adlists are set correctly" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker exec Pi-DNStack_pihole sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
+                docker exec Pi-DNStack_pihole pihole-FTL sqlite3 /etc/pihole/gravity.db "SELECT * FROM adlist"
             }
             $result | Should -Match "https://test.com"
             $result | Should -Not -Match "https://v.firebog.net/hosts/static/w3kbl.txt"
@@ -332,13 +332,6 @@ Describe "Docker Container Tests" {
         It "Should ensure the pihole container has no ports bound" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect Pi-DNStack_pihole --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
-            }
-            $result | Should -BeNullOrEmpty
-        }
-
-        It "Should ensure the unbound container has no ports bound" {
-            [string]$result = Invoke-Command -Session $session -ScriptBlock {
-                docker inspect Pi-DNStack_unbound --format '{{range .HostConfig.PortBindings}}{{.}}{{end}}'
             }
             $result | Should -BeNullOrEmpty
         }

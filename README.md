@@ -13,7 +13,7 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 ## Features
 
 -   Automated Preconfigured Deployment
--   Declarative Configuration: Compares your .psd1 with the current state and only applies necessary changes
+-   Declarative (and idempotent) Configuration: Compares your .psd1 with the current state and only applies necessary changes
 -   Multi-host deployment support
 -   Automatic dependency installation
 -   Optional Windows DHCP configuration

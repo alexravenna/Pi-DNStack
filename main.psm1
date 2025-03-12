@@ -445,6 +445,25 @@ function Set-PiholeConfiguration {
         docker exec "$($data['stackName'])_pihole" /bin/bash -c $command
     }
 
+    Write-Host "Waiting for Pi-hole to be healthy..."
+    $maxRetries = 30
+    $retryCount = 0
+    $healthy = $false
+    while ($retryCount -lt $maxRetries -and -not $healthy) {
+        Start-Sleep -Seconds 10
+        $status = docker inspect --format='{{.State.Health.Status}}' "$($data['stackName'])_pihole"
+        if ($status -eq "healthy") {
+            $healthy = $true
+        }
+        else {
+            $retryCount++
+            Write-Host "Pi-hole is not healthy yet. Retrying... ($retryCount/$maxRetries)"
+        }
+    }
+    if (-not $healthy) {
+        throw "Pi-hole did not become healthy within the expected time."
+    }
+
     # get ips of upstream DNS servers as pihole needs ip addresses and not docker hostnames
     try {
         if ($data['unboundEnabled']) {
@@ -509,12 +528,12 @@ fi
     # update gravity in case the db is not yet created
     docker exec "$($data['stackName'])_pihole" pihole updateGravity 2>&1 >/dev/null
     # remove deprecated adlists
-    $existingAdlists = docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "SELECT address FROM adlist;"
+    $existingAdlists = docker exec "$($data['stackName'])_pihole" pihole-FTL sqlite3 /etc/pihole/gravity.db "SELECT address FROM adlist;"
     $existingAdlists = $existingAdlists -split "`n"
 
     foreach ($adlist in $existingAdlists) {
         if ($adlist -notin $data['adlists']) {
-            docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "DELETE FROM adlist WHERE address='$adlist';"
+            docker exec "$($data['stackName'])_pihole" pihole-FTL sqlite3 /etc/pihole/gravity.db "DELETE FROM adlist WHERE address='$adlist';"
         }
     }
     # add new ones
@@ -523,7 +542,7 @@ fi
 INSERT OR IGNORE INTO adlist (address, enabled, date_added, date_modified, comment, date_updated, number, invalid_domains, status)
 VALUES ('$adlist', 1, cast(strftime('%s', 'now') as int), cast(strftime('%s', 'now') as int), 'Added via Pi-DNStack', NULL, 0, 0, 0);
 "@
-        docker exec "$($data['stackName'])_pihole" sqlite3 /etc/pihole/gravity.db "$command"
+        docker exec "$($data['stackName'])_pihole" pihole-FTL sqlite3 /etc/pihole/gravity.db "$command"
 
     }
     docker exec "$($data['stackName'])_pihole" pihole updateGravity 2>&1 >/dev/null
