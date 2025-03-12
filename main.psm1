@@ -220,7 +220,7 @@ function Deploy-Container {
         $currentConfig = Get-CurrentContainerConfig -ContainerName $name
         $envs = @()
         if ($name -match "pihole") {
-            $envs += "WEBPASSWORD=$($data['piholePassword'])"
+            $envs += "FTLCONF_webserver_api_password=$($data['piholePassword'])"
         }
         # check if the container runs
         if ($null -eq $currentConfig) {
@@ -292,7 +292,7 @@ function Deploy-Pihole {
         "$($data['piholeDnsPort']):53"
     ) `
         -volumes $data['piholeVolumes'] `
-        -flags "$($data['piholeFlags']) -e WEBPASSWORD=$password"
+        -flags "$($data['piholeFlags']) -e FTLCONF_webserver_api_password=$password"
 }
 
 <#

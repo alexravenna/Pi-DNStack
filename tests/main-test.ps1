@@ -275,7 +275,7 @@ Describe "Docker Container Tests" {
             [string]$result = Invoke-Command -Session $session -ScriptBlock {
                 docker inspect Pi-DNStack_pihole --format '{{range .Config.Env}}{{println .}}{{end}}'
             }
-            $result | Should -Match "WEBPASSWORD=secret"
+            $result | Should -Match "FTLCONF_webserver_api_password=secret"
         }
 
         It "Should ensure volume path is changed" {
