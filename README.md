@@ -25,8 +25,8 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
 -   **Target Server(s)**:
 
     -   Linux-based operating system
-        -   Debian-based using `apt`
-        -   RedHat-based using `dnf`
+        -   Debian-based: Ubuntu, Raspbian, etc.
+        -   RPM-based: Fedora, CentOS, RHEL, SUSE, etc.
         -   Other distributions if dependencies are pre-installed
     -   Sufficient privileges
 

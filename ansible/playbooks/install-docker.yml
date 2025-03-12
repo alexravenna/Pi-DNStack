@@ -7,9 +7,14 @@
   failed_when: false
   changed_when: false
 
-# deb
-- name: Ensure ca-certificates and curl are installed
-  ansible.builtin.apt:
+- name: Ensure dnf-plugins-core is installed (RHEL)
+  ansible.builtin.package:
+      name: dnf-plugins-core
+      state: present
+  when: ansible_os_family == "RedHat" and docker_installed.rc != 0
+
+- name: Ensure ca-certificates and curl are installed (Debian)
+  ansible.builtin.package:
       name:
           - ca-certificates
           - curl
@@ -17,36 +22,68 @@
       update_cache: true
   when: ansible_os_family == "Debian"
 
-- name: Ensure keyrings directory permissions
+- name: Ensure keyrings directory permissions (Debian)
   ansible.builtin.file:
       path: /etc/apt/keyrings
       state: directory
       mode: "0755"
   when: ansible_os_family == "Debian" and docker_installed.rc != 0
 
-- name: Add Docker's official GPG key
+- name: Add Docker's official GPG key (Debian)
   ansible.builtin.get_url:
-      url: https://download.docker.com/linux/ubuntu/gpg
+      url: https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg
       dest: /etc/apt/keyrings/docker.asc
       mode: "0644"
   when: ansible_os_family == "Debian" and docker_installed.rc != 0
 
-- name: Set correct permissions for the Docker GPG key
+- name: Set correct permissions for the Docker GPG key (Debian)
   ansible.builtin.file:
       path: /etc/apt/keyrings/docker.asc
       mode: "0644"
   when: ansible_os_family == "Debian" and docker_installed.rc != 0
 
-- name: Add Docker repository to Apt sources
+- name: Add Docker repository to Apt sources (Debian)
   ansible.builtin.lineinfile:
       path: /etc/apt/sources.list.d/docker.list
-      line: "deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release | lower }} stable"
+      line: "deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_distribution_release | lower }} stable"
       create: true
       mode: "0644"
   when: ansible_os_family == "Debian" and docker_installed.rc != 0
 
-- name: Install Docker packages
-  ansible.builtin.apt:
+- name: Add Docker repository (FEDORA)
+  ansible.builtin.command:
+      cmd: dnf-3 config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+  when: ansible_distribution == "Fedora" and docker_installed.rc != 0
+
+- name: Add Docker repository (RHEL)
+  ansible.builtin.command:
+      cmd: dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+  when: ansible_distribution == "RedHat" and docker_installed.rc != 0
+
+- name: Update cache (Debian)
+  ansible.builtin.package:
+      update_cache: yes
+  when: ansible_os_family == "Debian" and docker_installed.rc != 0
+
+- name: Update cache (RHEL)
+  ansible.builtin.package:
+      name: docker-ce
+      state: present
+  when: ansible_os_family == "RedHat" and docker_installed.rc != 0
+
+- name: Install Docker packages (RHEL)
+  ansible.builtin.package:
+      name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+      state: present
+  when: ansible_os_family == "RedHat" and docker_installed.rc != 0
+
+- name: Install Docker packages (Debian)
+  ansible.builtin.package:
       name:
           - docker-ce
           - docker-ce-cli
@@ -55,34 +92,6 @@
           - docker-compose-plugin
       state: present
   when: ansible_os_family == "Debian" and docker_installed.rc != 0
-
-# rpm
-- name: Ensure dnf-plugins-core is installed
-  ansible.builtin.dnf:
-      name: dnf-plugins-core
-      state: present
-  when: ansible_os_family == "RedHat" and docker_installed.rc != 0
-
-- name: Add Docker repository
-  ansible.builtin.yum_repository:
-      name: docker-ce
-      description: Docker CE Stable - $basearch
-      baseurl: https://download.docker.com/linux/fedora/docker-ce.repo
-      enabled: true
-      gpgcheck: true
-      gpgkey: https://download.docker.com/linux/fedora/gpg
-  when: ansible_os_family == "RedHat" and docker_installed.rc != 0
-
-- name: Install Docker packages
-  ansible.builtin.dnf:
-      name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-buildx-plugin
-          - docker-compose-plugin
-      state: present
-  when: ansible_os_family == "RedHat" and docker_installed.rc != 0
 
 - name: Add user to docker group
   ansible.builtin.user:
