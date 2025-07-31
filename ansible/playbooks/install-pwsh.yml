@@ -71,6 +71,13 @@
   notify: Restart SSH
 
 - name: Restart SSH
-  ansible.builtin.service:
-      name: sshd
-      state: restarted
+  block:
+      - name: Try restarting sshd
+        ansible.builtin.service:
+            name: sshd
+            state: restarted
+  rescue:
+      - name: Fallback to restarting ssh
+        ansible.builtin.service:
+            name: ssh
+            state: restarted
