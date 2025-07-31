@@ -70,7 +70,7 @@
       state: present
   notify: Restart SSH
 
-- name: Restart SSH service
+- name: Restart SSH
   ansible.builtin.service:
       name: sshd
       state: restarted
