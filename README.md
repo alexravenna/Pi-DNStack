@@ -41,6 +41,10 @@ Pi-DNStack is an automated solution for deploying a containerized DNS management
             -   Other distributions if dependencies are pre-installed
         -   Windows users can use [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install)
 
+> ⚠️ All deployment steps below should be run from your **workstation**, not directly on the target server.  
+> The script connects to the servers via SSH.  
+> You *can* use the server as its own workstation if it has PowerShell 7 and SSH access to itself, but that's not the main use case.
+
 ## Quick Start
 
 1. **Clone Repository**
@@ -101,7 +105,7 @@ Pi-DNStack can automatically configure a Windows DHCP server to use Pi-hole. Thi
 1. **Docker Network Mode**:
 
     - If using `bridge` mode, ensure Pi-hole's DNS port is published (`piholeDnsPort = "53"`)
-    - If using `host` mode (recomenden when using this feature), ensure the host's firewall allows DNS traffic and unbound is disabled (both containers would use port 53)
+    - If using `host` mode (recommended when using this feature), ensure the host's firewall allows DNS traffic and unbound is disabled (both containers would use port 53)
 
 2. **Pi-hole Listen Configuration**:
     - Ensure Pi-hole is configured to listen to the required interfaces.
